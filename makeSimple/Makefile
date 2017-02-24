@@ -7,7 +7,7 @@ GPUOBJS = cuexample.o
 OBJS = cppexample.o
 
 # make and compile
-cudaexample.out: $(OBJS) $(GPUOBJS)
+a.out: $(OBJS) $(GPUOBJS)
 	$(NVCC) -o a.out $(OBJS) $(GPUOBJS) 
 
 cuexample.o: cuexample.cu
