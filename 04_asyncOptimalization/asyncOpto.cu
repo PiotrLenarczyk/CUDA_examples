@@ -58,7 +58,7 @@ vector < float > wynikGPU( N, 0 );
             //copy / download data in direction HostToDevice
             HANDLE_ERROR( cudaMemcpyAsync( dev_a1, &firstMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice ) );
             HANDLE_ERROR( cudaMemcpyAsync( dev_b1, &secondVectorMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice ) );
-            //calculate vectors sum, using max. 1D Threads per Block
+            //calculate vectors sum, using max. number of possible 1D Threads per Block
             add<<< ( N + nThreads - 1 ) / nThreads, nThreads >>> ( dev_a1, dev_b1, dev_c1, N );
             //copy / upload results data c[] in direction DeviceToHost
             HANDLE_ERROR( cudaMemcpyAsync( &resultsGPUMatrix[ *( int * ) iter  ][ 0 ], dev_c1, typeSize, cudaMemcpyDeviceToHost ) );

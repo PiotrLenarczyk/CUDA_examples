@@ -13,3 +13,6 @@ deviceFeatures.o: deviceFeatures.cu
 
 clean:
 	rm deviceFeatures.o
+
+delete:
+	rm a.out

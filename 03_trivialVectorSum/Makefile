@@ -3,14 +3,17 @@ FLAGS = -Wno-deprecated-gpu-targets -std=c++11
 NVCC = /usr/bin/nvcc $(FLAGS)
 
 # here are all the objects
-GPUOBJS = asyncOpto.o 
+GPUOBJS = vecSum.o 
 
 # make and compile
 a.out:  $(GPUOBJS)
 	$(NVCC) -o a.out $(GPUOBJS) 
 
-asyncOpto.o: asyncOpto.cu
-	$(NVCC) -c asyncOpto.cu
+vecSum.o: vecSum.cu
+	$(NVCC) -c vecSum.cu
 
 clean:
-	rm asyncOpto.o
+	rm vecSum.o
+
+delete:
+	rm a.out
