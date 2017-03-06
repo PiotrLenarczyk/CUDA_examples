@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <iterator>
+#include <string>
+#include <fstream>
 
 using namespace thrust;
 

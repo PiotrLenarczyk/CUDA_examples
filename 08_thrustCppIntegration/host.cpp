@@ -2,13 +2,11 @@
 
 /*
  
-/usr/local/cuda-8.0/bin/nvcc -Wno-deprecated-gpu-targets -O2 -c device.cu && g++  -O2 -c host.cpp -I/usr/local/cuda/include/ && /usr/local/cuda-8.0/bin/nvcc -Wno-deprecated-gpu-targets -o tester device.o host.o && ./tester dataFile.txt 
+`find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets -O2 -c device.cu && g++  -O2 -c host.cpp -I/usr/local/cuda/include/ && `find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets -o tester device.o host.o && ./tester dataFile.txt 
 
 */
 using namespace std;
 
-#include <string>
-#include <fstream>
 struct Reading
 {
     float hour;
@@ -64,7 +62,10 @@ int main( int argc, char *argv[] )
             thrust::copy( h_vecSorted.begin(), h_vecSorted.end(), std::ostream_iterator< float >( std::cout, "\n" ) );
         }
     }
-
-
+    std::cout << "dynamic host vector:\n";
+    std::cout << "h_vecFile.size(): " << h_vecFile.size() << std::endl;
+    h_vecFile.push_back( 0.1f );
+    std::cout << "h_vecFile.size(): " << h_vecFile.size() << std::endl;
+    
     return 0;
 }
