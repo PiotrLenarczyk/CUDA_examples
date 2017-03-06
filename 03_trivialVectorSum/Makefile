@@ -1,6 +1,6 @@
 # Build tools 
 FLAGS = -Wno-deprecated-gpu-targets -std=c++11
-NVCC = /usr/bin/nvcc $(FLAGS)
+NVCC = `find /usr/bin/ -name 'nvcc'` $(FLAGS)
 
 # here are all the objects
 GPUOBJS = vecSum.o 

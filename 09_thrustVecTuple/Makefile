@@ -1,13 +1,13 @@
 # Build tools 
 FLAGS = -Wno-deprecated-gpu-targets -std=c++11
-NVCC = /usr/local/cuda-8.0/bin/nvcc $(FLAGS)
+NVCC = `find /usr/bin/ -name 'nvcc'` $(FLAGS)
 
 # here are all the objects
-GPUOBJS = vecTuple.o 
+GPUOBJS = vecTuple.o
 
 # make and compile
 a.out:  $(GPUOBJS)
-	$(NVCC) -o a.out $(GPUOBJS) 
+	$(NVCC) -o a.out $(GPUOBJS)
 
 vecTuple.o: vecTuple.cu
 	$(NVCC) -c vecTuple.cu
