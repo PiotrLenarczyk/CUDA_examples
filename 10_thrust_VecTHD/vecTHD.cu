@@ -2,9 +2,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/generate.h>
-#include <thrust/sort.h>
-#include <thrust/binary_search.h>
-#include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 //STL
 #include <iostream>
