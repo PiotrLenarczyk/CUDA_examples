@@ -29,14 +29,14 @@ int main ( void )
 {
     const size_t N = 1000000;
     // allocate some random points on the host
-    thrust::host_vector<vec4> h_points(N);
-    thrust::generate(h_points.begin(), h_points.end(), make_random_vec4);
-    std::cout << "The x4D[ 0 ] of h_points is " << thrust::get< 3 >( h_points[0] ) << std::endl;
+    thrust::host_vector<vec4> h_5Dpoints(N);
+    thrust::generate(h_5Dpoints.begin(), h_5Dpoints.end(), make_random_vec4);
+    std::cout << "The x4D[ 0 ] of h_5Dpoints is " << thrust::get< 3 >( h_5Dpoints[0] ) << std::endl;
     
     // transfer to device
-    thrust::device_vector< vec4 > d_points = h_points;
-    vec4 p = d_points[ 0 ]; std::cout << "The x4D[ 0 ] of d_points is " << thrust::get< 3 >( p ) << std::endl;
-    std::cout << "The x4D[ 0 ] of d_points is " << thrust::get< 3 >( vec4( d_points[ 0 ] ) ) << std::endl;
+    thrust::device_vector< vec4 > d_5Dpoints = h_5Dpoints;
+    vec4 p = d_5Dpoints[ 0 ]; std::cout << "The x4D[ 0 ] of d_5Dpoints is " << thrust::get< 3 >( p ) << std::endl;
+    std::cout << "The x4D[ 0 ] of d_5Dpoints is " << thrust::get< 3 >( vec4( d_5Dpoints[ 0 ] ) ) << std::endl;
     
     return 0;
 }
