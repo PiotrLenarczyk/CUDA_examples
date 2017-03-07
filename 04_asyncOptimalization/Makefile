@@ -1,6 +1,6 @@
 # Build tools 
 FLAGS = -Wno-deprecated-gpu-targets -std=c++11
-NVCC = `find /usr/bin/ -name 'nvcc'` $(FLAGS)
+NVCC = `find /usr -name 'nvcc'` $(FLAGS)
 
 # here are all the objects
 GPUOBJS = asyncOpto.o 

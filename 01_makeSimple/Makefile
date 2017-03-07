@@ -1,6 +1,6 @@
 # Build tools g++-5 or g++-6
-CXX = g++-6
-NVCC = `find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets 
+CXX = g++-5
+NVCC = `find /usr -name 'nvcc'` -Wno-deprecated-gpu-targets 
 
 # here are all the objects
 GPUOBJS = cuexample.o 

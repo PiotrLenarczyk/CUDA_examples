@@ -1,10 +1,5 @@
 #include "device.h"
 
-/*
- 
-`find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets -O2 -c device.cu && g++  -O2 -c host.cpp -I/usr/local/cuda/include/ && `find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets -o tester device.o host.o && ./tester dataFile.txt 
-
-*/
 using namespace std;
 
 struct Reading

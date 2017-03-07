@@ -1,5 +1,5 @@
 # Build tools 
-NVCC = `find /usr/bin/ -name 'nvcc'` -Wno-deprecated-gpu-targets 
+NVCC = `find /usr -name 'nvcc'` -Wno-deprecated-gpu-targets 
 
 # here are all the objects
 GPUOBJS = deviceFeatures.o 
