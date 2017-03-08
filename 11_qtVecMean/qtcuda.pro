@@ -28,9 +28,9 @@ CUDA_DIR      = /usr/local/cuda-8.0
 # Path to header and libs files
 INCLUDEPATH  += $$CUDA_DIR/include 
 
-QMAKE_LIBDIR += $$CUDA_DIR/lib64     # Note I'm using a 64 bits Operating system
+QMAKE_LIBDIR += $$CUDA_DIR/lib64     # Note Iam using a 64 bits Operating system
 # libs used in your code
-LIBS += -lcuda -lcudart #note that cudart should be linked via command: sudo ldconfig /usr/local/cuda-8.0/lib64/
+LIBS += -lcuda -lcudart #note that cudart should be linked via command: #sudo ldconfig `sudo find /usr/lib -name '*cudart*'`
 # GPU architecture
 CUDA_ARCH     = sm_35               
 NVCCFLAGS     = -std=c++11
