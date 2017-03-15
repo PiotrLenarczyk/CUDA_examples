@@ -1,7 +1,7 @@
 #!/bin/bash
 #also one can run: 
 #                   make && ./a.out
-make delete
+touch a.out && rm a.out
 make -j`nproc`
 make clean
 clear 
