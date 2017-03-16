@@ -10,12 +10,11 @@ int main ( void )
 	HANDLE_ERROR( cudaGetDeviceCount( &count ) );
 	for ( int i = 0; i < count; i++ )
 	{
-		HANDLE_ERROR( cudaGetDeviceProperties( &prop, i ) );    
-		printf( "==============================================================================\n" );
-		printf( "========= 7D GPU of 6D Grid [ BX, BY, BZ ] of 4D B = Block[ THX, THY, THZ ] ==\n" );
-                printf( "===== 7D GX of [ 4D BX; 4D BY; 4D BZ ] of 4D B [ 1D THX; 1D THY; 1D THZ ] ==== \n" );
-		printf( "========= single Thread[] in 4D Block [ THX, THY, THZ ] acts as ALU ==========\n" );                
-		printf( "==============================================================================\n" );                
+		HANDLE_ERROR( cudaGetDeviceProperties( &prop, i ) );
+		printf( "=======================================================================================================\n" );
+                printf( "========= 7D GPU of 6D GX [ 4D BX; 5D BY; 6D BZ ] of 4D B [ 1D THX; 2D THY; 3D THZ ] ==================\n" );
+		printf( "========= single Thread[] in 4D Block [ THX, THY, THZ ] acts as ALU ===================================\n" );                
+		printf( "=======================================================================================================\n" );                
 		printf( "Grid[ Blocks, Blocks, Blocks ] => gridKnot/kernel<<< Blocks, BlockThread >>>\n" );
 		printf( "Grid[ Blocks, Blocks, Blocks ] => gridKnot/kernel<<< Block, BlockThreads >>>\n" );                
 		printf( "Grid[ 0,0,0 ] = Block0[ Thread[ 0, 0, 0 ], Thread[ 1, 0, 0 ], Thread[ 2, 0, 0 ], Thread[ 3, 0, 0 ]... ]\n" );
