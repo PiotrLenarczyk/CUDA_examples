@@ -80,6 +80,21 @@ int main( int argc, char *argv[] )
               );
     }
     
+    //few device_vectors 2D iterator
+    typedef device_vector< float >::iterator vecIter;
+    device_vector< float > vec1D_1( 100, 0.1f );
+    vec1D_1[ 2 ] = 17;    
+    device_vector< float > vec1D_2( 100, 0.2f );
+    device_vector< vecIter > vec2D( 2 );                //useful only for sort_by_key feature
+    vec2D[ 0 ] = vec1D_1.begin();
+    vec2D[ 1 ] = vec1D_2.begin();
+    printf( "%.2f\n", float( vecIter(vec2D[ 0 ] )[ 2 ]) );
+    
+    unsigned int X = 1920; unsigned int Y = 1060;
+    typedef tuple< unsigned int, unsigned int, float > XYLumPix;    //thrust luminance pixs storage via tuple
+    device_vector < XYLumPix > GPUPicture( X * Y );                 //still problem of sending via PCIe => cudamemcpy2d; cudamemcpyArray
+    //vector< vector< Lum > > => LumArray
+    
     cudaDeviceSynchronize();
     return 0;
 }
