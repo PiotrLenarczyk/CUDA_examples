@@ -6,17 +6,17 @@ NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 # NVCC = /usr/local/cuda-8.0/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 
 # here are all the objects
-GPUOBJS = thrustMultiMapSort.o 
+GPUOBJS = vecDSort.o 
 
 # make and compile
 a.out:  $(GPUOBJS)
 	$(NVCC) -o a.out $(GPUOBJS) 
 
-thrustMultiMapSort.o: thrustMultiMapSort.cu
-	$(NVCC) -c thrustMultiMapSort.cu
+vecDSort.o: vecDSort.cu
+	$(NVCC) -c vecDSort.cu
 
 clean:
-	rm thrustMultiMapSort.o
+	rm vecDSort.o
 
 delete:
 	rm a.out

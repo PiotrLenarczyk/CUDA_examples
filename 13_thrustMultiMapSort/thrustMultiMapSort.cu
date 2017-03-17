@@ -7,12 +7,14 @@
 #include <thrust/sort.h>            //sorting
 #include <thrust/random.h>          //random example data generator
 #include <thrust/tuple.h>           //abstract data vectors
+#include <thrust/iterator/zip_iterator.h>  //tuple iterator 
 
 using namespace thrust;             //note that default is THRUST!!!
 using std::cout; using std::endl;   //STL is for timings and data viewing
 
 long int N( 0 );
     
+
 int main( int argc, char *argv[] )
 {
     clock_t t( clock() );
@@ -28,9 +30,36 @@ int main( int argc, char *argv[] )
     //one can visualise as POINTSCLOUD MOVIE = single 4D point
     cout << "tuple4D[ 1 ]: " << get< 1 >( tuple4D ) << endl;
     
-    device_vector< pair< float, float > > mapTh( N ); //Thrust map structure
+    //tuple pointer iterator - zip:
     default_random_engine rng( 123 );
     uniform_real_distribution< float > dist_f( 0.0f, 0.996f );
+    device_vector< float > vecX( N ), vecY( N ), vecZ( N ), vecVal( N );
+    for ( unsigned int i = 0; i < N; i++ )
+    {
+        vecX[ i ] = dist_f( rng );
+        vecY[ i ] = dist_f( rng );
+        vecZ[ i ] = dist_f( rng );
+        vecVal[ i ] = dist_f( rng );
+    }
+    typedef device_vector< float >::iterator FloatIter;
+    typedef tuple< FloatIter, FloatIter, FloatIter, FloatIter > tup4DIter;
+    typedef zip_iterator< tup4DIter > zip4DIter;
+
+    zip4DIter iter4D( make_tuple( 
+                                    vecX.begin(),
+                                    vecY.begin(),
+                                    vecZ.begin(),
+                                    vecVal.begin()
+                                )
+                    );
+    cout << "zipIter4D[0]: " 
+         << get< 0 >( iter4D[ 0 ] ) << ", "
+         << get< 1 >( iter4D[ 0 ] ) << ", "
+         << get< 2 >( iter4D[ 0 ] ) << ", "
+         << get< 3 >( iter4D[ 0 ] ) << ", "
+         << endl;    
+    
+    device_vector< pair< float, float > > mapTh( N ); //Thrust map structure
     for ( size_t i = 0; i < mapTh.size(); i++ )
     {
         float a = dist_f( rng );
