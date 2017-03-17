@@ -13,22 +13,9 @@ using std::cout; using std::endl;   //STL is for timings and data viewing
 
 long int N( 0 );
     
-__global__ void childKernel()       //dynamic Parallelism child
-{
-    printf( "Hello %d", threadIdx.x );
-}
-
-__global__ void parentKernel()      //dynamic Parallelism parent
-{
-    childKernel<<< 1, 2 >>>();
-    cudaDeviceSynchronize();
-    printf( "World!\n" );
-}
-
 int main( int argc, char *argv[] )
 {
     clock_t t( clock() );
-//     parentKernel<<< 1, 2 >>>();
     N = atol( argv[ argc - 1 ] ); 
     if ( N == 0 ) 
     {
