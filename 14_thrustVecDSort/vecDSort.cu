@@ -2,7 +2,10 @@
 #include <cstdlib>                  //atol
 #include <iostream>                 //printf, cout, endl
 #include <time.h>                   //timings
+#include <vector>					//vector for example host picture
+#include <algorithm>                //std::copy
 //CUDA
+#include <thrust/host_vector.h>
 #include <thrust/device_vector.h>   //omit host vectors and costly data transfers
 #include <thrust/sort.h>            //sorting
 #include <thrust/random.h>          //random example data generator
@@ -10,6 +13,7 @@
 
 using namespace thrust;             //note that default is THRUST!!!
 using std::cout; using std::endl;   //STL is for timings and data viewing
+using std::vector;
 
 //http://stackoverflow.com/questions/26676806/efficiency-of-cuda-vector-types-float2-float3-float4
 
@@ -64,8 +68,7 @@ int main( int argc, char *argv[] )
     sort( vecZValInd.begin(), vecZValInd.end() );
     sort( vecValInd.begin(), vecValInd.end() );
     cout << "time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
-    cout << "sorted vecD ";
-    cout << "Dimensionally sorted:" << endl;
+    cout << "Dimensionally sorted vecD:" << endl;
     for ( unsigned int i = 0; i < N; i++ )
     {
         printf( "vec[X,val][Y,val][Z,val][val,valRefInd]: X[ %.3f, %.3f ] Y[ %.3f, %.3f ] Z[ %.3f, %.3f ] val[ %.3f, %02i ]\n",
@@ -80,6 +83,7 @@ int main( int argc, char *argv[] )
               );
     }
     
+//========================================================================================================================================	
     //few device_vectors 2D iterator
     typedef device_vector< float >::iterator vecIter;
     device_vector< float > vec1D_1( 100, 0.1f );
@@ -89,12 +93,22 @@ int main( int argc, char *argv[] )
     vec2D[ 0 ] = vec1D_1.begin();
     vec2D[ 1 ] = vec1D_2.begin();
     printf( "%.2f\n", float( vecIter(vec2D[ 0 ] )[ 2 ]) );
-    
-    unsigned int X = 1920; unsigned int Y = 1060;
-    typedef tuple< unsigned int, unsigned int, float > XYLumPix;    //thrust luminance pixs storage via tuple
-    device_vector < XYLumPix > GPUPicture( X * Y );                 //still problem of sending via PCIe => cudamemcpy2d; cudamemcpyArray
-    //vector< vector< Lum > > => LumArray
-    
+//=========================================================================================================================================    
+    unsigned int colsX = 1920; unsigned int rowsY = 1060;
+	vector< float > vecRowTmp( colsX, 1.0f );					
+	vector< vector< float > > vecPicture( rowsY, vecRowTmp );		//example host luminance picture
+
+//	typedef tuple< unsigned int, unsigned int, float > XYLumPix;    //thrust luminance pixs storage via tuple
+//    device_vector < XYLumPix > GPUPicture( colsX * rowsY );                 //still problem of sending via PCIe => cudamemcpy2d; cudamemcpyArray
+    /////vector< vector< Lum > > => LumArray	
+	host_vector< float > hostPic( colsX * rowsY );
+	for ( unsigned int rowY = 0; rowY < rowsY; rowY++ )
+		std::copy( vecRowTmp.begin(), vecRowTmp.end(), hostPic.begin() );
+
+	device_vector< float > gpuPic( colsX * rowsY );
+	std::copy( vecRowTmp.begin(), vecRowTmp.end(), gpuPic.begin() );
+
     cudaDeviceSynchronize();
     return 0;
 }
+
