@@ -94,7 +94,7 @@ int main( int argc, char *argv[] )
     vec2D[ 1 ] = vec1D_2.begin();
     printf( "%.2f\n", float( vecIter(vec2D[ 0 ] )[ 2 ]) );
 //=========================================================================================================================================    
-    unsigned int colsX = 1920; unsigned int rowsY = 1060;
+    unsigned int colsX = 800; unsigned int rowsY = 600;
     vector< float > vecRowTmp( colsX, 1.01f );					
     vector< vector< float > > vecPicture( rowsY, vecRowTmp );		//example host luminance picture
     
@@ -114,15 +114,19 @@ int main( int argc, char *argv[] )
     auto valIndBeg = thrust::make_zip_iterator( thrust::make_tuple( gpuPic.begin(), ind1DPic.begin() ) );
     auto valIndEnd = thrust::make_zip_iterator( thrust::make_tuple( gpuPic.end(), ind1DPic.end() ) );
     sort( valIndBeg, valIndEnd );
-    cout << "gpuPic parallel sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
-
+    cout << "gpuPicZipped parallel sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
+    cout << "valIndBeg[ val ][ ind ]: " << "[" 
+         << get< 0 >( tuple< float, unsigned int >( valIndBeg[ 0 ] ) ) << "]["
+         << get< 1 >( tuple< float, unsigned int >( valIndBeg[ 0 ] ) ) << "]" 
+         << endl;
+    
     t = clock();
     typedef pair< float, unsigned int > pairFloatIndGPUInd; //< float, index > pair
     device_vector< pairFloatIndGPUInd > vecPicValInd( colsX * rowsY );
     for ( unsigned int i = 0; i < colsX * rowsY; i++ )
         vecPicValInd[ i ] = make_pair( gpuPic[ i ], ind1DPic[ i ] );
     sort( vecPicValInd.begin(), vecPicValInd.end() );
-    cout << "<floatVal, uintInd> gpuPicSequentiallyGeneratdPairs sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
+    cout << "<floatVal, uintInd> gpuPicSequentiallyGeneratdPairs + sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
     
     cudaDeviceSynchronize();
     return 0;
