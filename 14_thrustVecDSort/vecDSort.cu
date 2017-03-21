@@ -3,13 +3,13 @@
 #include <iostream>                 //printf, cout, endl
 #include <time.h>                   //timings
 #include <vector>					//vector for example host picture
-#include <algorithm>                //std::copy
 //CUDA
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>   //omit host vectors and costly data transfers
 #include <thrust/sort.h>            //sorting
 #include <thrust/random.h>          //random example data generator
 #include <thrust/tuple.h>           //abstract data vectors
+#include <thrust/sequence.h>        //data input index sequence
 
 using namespace thrust;             //note that default is THRUST!!!
 using std::cout; using std::endl;   //STL is for timings and data viewing
@@ -67,7 +67,7 @@ int main( int argc, char *argv[] )
     sort( vecYValInd.begin(), vecYValInd.end() );
     sort( vecZValInd.begin(), vecZValInd.end() );
     sort( vecValInd.begin(), vecValInd.end() );
-    cout << "time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
+    cout << "sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
     cout << "Dimensionally sorted vecD:" << endl;
     for ( unsigned int i = 0; i < N; i++ )
     {
@@ -95,19 +95,35 @@ int main( int argc, char *argv[] )
     printf( "%.2f\n", float( vecIter(vec2D[ 0 ] )[ 2 ]) );
 //=========================================================================================================================================    
     unsigned int colsX = 1920; unsigned int rowsY = 1060;
-	vector< float > vecRowTmp( colsX, 1.0f );					
-	vector< vector< float > > vecPicture( rowsY, vecRowTmp );		//example host luminance picture
+    vector< float > vecRowTmp( colsX, 1.01f );					
+    vector< vector< float > > vecPicture( rowsY, vecRowTmp );		//example host luminance picture
+    
+    t = clock();
+    device_vector< float > gpuPic( colsX * rowsY, 0.0f );
+    for ( unsigned int rowY = 0; rowY < rowsY; rowY++ )
+            thrust::copy( vecPicture[ rowY ].begin(), vecPicture[ rowY ].end(), gpuPic.begin() + ( rowY * colsX ) );
+    cout << "HtD pic transfer time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
+    cout << "vector< vector< Lum > > => LumArray; pixs are accessible via colX, rowY already!" << endl;
+    
+    device_vector< unsigned int > ind1DPic ( colsX * rowsY );
+    sequence( ind1DPic.begin(), ind1DPic.end(), 0.0f );
+    cout << "ind1DPic[4]: " << ind1DPic[ 4 ] << endl;
+    
+    cout << "generatig < floatVal, unsigned intInd > pairs in parallel:" << endl;
+    t = clock();
+    auto valIndBeg = thrust::make_zip_iterator( thrust::make_tuple( gpuPic.begin(), ind1DPic.begin() ) );
+    auto valIndEnd = thrust::make_zip_iterator( thrust::make_tuple( gpuPic.end(), ind1DPic.end() ) );
+    sort( valIndBeg, valIndEnd );
+    cout << "gpuPic parallel sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
 
-//	typedef tuple< unsigned int, unsigned int, float > XYLumPix;    //thrust luminance pixs storage via tuple
-//    device_vector < XYLumPix > GPUPicture( colsX * rowsY );                 //still problem of sending via PCIe => cudamemcpy2d; cudamemcpyArray
-    /////vector< vector< Lum > > => LumArray	
-	host_vector< float > hostPic( colsX * rowsY );
-	for ( unsigned int rowY = 0; rowY < rowsY; rowY++ )
-		std::copy( vecRowTmp.begin(), vecRowTmp.end(), hostPic.begin() );
-
-	device_vector< float > gpuPic( colsX * rowsY );
-	std::copy( vecRowTmp.begin(), vecRowTmp.end(), gpuPic.begin() );
-
+    t = clock();
+    typedef pair< float, unsigned int > pairFloatIndGPUInd; //< float, index > pair
+    device_vector< pairFloatIndGPUInd > vecPicValInd( colsX * rowsY );
+    for ( unsigned int i = 0; i < colsX * rowsY; i++ )
+        vecPicValInd[ i ] = make_pair( gpuPic[ i ], ind1DPic[ i ] );
+    sort( vecPicValInd.begin(), vecPicValInd.end() );
+    cout << "<floatVal, uintInd> gpuPicSequentiallyGeneratdPairs sorting time: " << 1000 * float( clock() - t ) / CLOCKS_PER_SEC << "[ ms ]" << endl;
+    
     cudaDeviceSynchronize();
     return 0;
 }
