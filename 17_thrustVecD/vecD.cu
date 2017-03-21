@@ -42,10 +42,22 @@ int main( int argc, char *argv[] )
     device_vector< float > d_vecD[ ROWY ];
     for ( unsigned i = 0; i < ROWY; i++ )
         d_vecD[ i ] = dim1;
-    d_vecD[ 0 ][ 1 ] = 0.9f;
+    d_vecD[ 0 ][ 1 ] = 11.1f;
     cout << "d_vecD[ 0 ][ 1 ]: " << d_vecD[ 0 ][ 1 ] << endl;
     cout << "d_vecD_Row[0].size(): " << int( device_vector< float >( d_vecD[ 0 ] ).size() ) << endl;
 //  P.S. note rare sparse matrices processing - or buy ArrayFire
+    
+////    THRUST vecD example
+    int timeROWY = 2;
+    int timeCOLX = N;
+    unsigned time = 10000;
+    device_vector< float > dim1D( timeCOLX, 0.1f );
+    device_vector< float > d_vecTimeD[ time ][ timeROWY ];
+    for ( unsigned i = 0; i < timeROWY; i++ )
+        d_vecTimeD[ 0 ][ i ] = dim1;
+    d_vecTimeD[ 0 ][ 0 ][ 1 ] = 11.1f;
+    cout << "d_vecTimeD[ zeroTime ][ 0 ][ 1 ]: " << d_vecTimeD[ 0 ][ 0 ][ 1 ] << endl;
+    cout << "d_vecTimeD_time[0]_Row[0].size(): " << int( device_vector< float >( d_vecTimeD[ 0 ][ 0 ] ).size() ) << endl;
     
 	return 0;
 }
