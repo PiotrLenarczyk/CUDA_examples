@@ -14,14 +14,14 @@ __constant__ unsigned N_dev[ 1 ]; //constant device variable declaration
 
 struct normalize_iFFT_functor
 {
-  __host__ __device__ void operator()(float &x)
+  __host__ __device__ void operator()( float &x )
   { 
       x /= N_dev[ 0 ];
   }
 };
 
 int main(void){
-    unsigned N = 7; cudaMemcpyToSymbol( N_dev[ 0 ], &N, sizeof( unsigned ) ); //constant device variable HtD
+    unsigned N = 7; cudaMemcpyToSymbol( N_dev, &N, sizeof( unsigned ) ); //constant device variable HtD
     unsigned Nfft = ( N / 2 ) + 1; //non - redundant FFT
     
 //  //FFT Simple data ( N ) Real-To-Complex spectrum ( N/2 + 1 )
