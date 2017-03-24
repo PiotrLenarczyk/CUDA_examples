@@ -47,7 +47,6 @@ __global__ void parentColsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
 //DCT1D GPU kernel
 __global__ void parentRowsDCT( )                            //rowY steered
 {
-//     unsigned rowDCT = blockIdx.x; 
 //                                  ROWS threads no        
     unsigned rowDCT = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;    
     d_vecDCTArray[ rowDCT ][ 0 ] = reduce( seq, d_vecDArray[ rowDCT ], d_vecDArray[ rowDCT ] + d_COLsX[ 0 ] ) / sqrtf( float( d_COLsX[ 0 ] ) );
