@@ -1,135 +1,147 @@
 //STL
-#include <cstdlib>                  //atol
-#include <stdlib.h>
-#include <iostream>                 //printf, cout, endl
+#include <iostream>                     //printf, cout, endl
 //THRUST
-#include <thrust/device_vector.h>   //omit host vectors and costly data transfers
-#include <thrust/for_each.h>        //normalize with size inversed FFT
-#include <thrust/reduce.h>
-#include <thrust/sequence.h>
-#include <thrust/execution_policy.h>
-#include <device_ptr.h>
-//cuFFT
-#include <cufft.h>
+#include <thrust/device_vector.h>       //omit host vectors and costly data transfers
+#include <thrust/for_each.h>            //normalize with size inversed FFT
+#include <thrust/reduce.h>              //sum array reduce
+#include <thrust/sequence.h>            //used in reduce
+#include <thrust/execution_policy.h>    //library dependency
+#include <device_ptr.h>                 //thrust device_vector to array
 
 using namespace thrust;             //note that default is THRUST!!!
-using std::cout; using std::endl;   //STL is for data viewing
 
-unsigned N( 0 ); __constant__ unsigned d_N[ 1 ];
-__constant__ float d_LUTspat[ 1920 ]; 
-__constant__ float d_sqrConst[ 1 ];
+//host globals
+unsigned h_BlThKernel[ 4 ];
 const float h_PI = 3.1415926535897932384626;
-/*
-__global__ void grandChildKernel( float* spatInChild, float* childSpecCoeffNo, float* dctTmpChild )    //up 65536 blocks for single thread
+const int ROWY = 1080;       
+const int COLX = 1920;
+//device variables ( const thread cache; global )
+__constant__ float d_LUTrowsY[ ROWY ];//note float lossy quantizer noise as trade-off: speed/accuracy
+__constant__ float d_LUTcolsX[ COLX ]; 
+__constant__ unsigned d_ROWsY[ 1 ]; //1080
+__constant__ unsigned d_COLsX[ 1 ]; //1920
+__constant__ unsigned d_BlThKernel[ 4 ]; //ROWY 1080 =8*135; COLX 1920 = 8*240; blocks-thread indexing map
+__device__ float d_vecDArray[ ROWY ][ COLX ];       //YX order
+__device__ float d_vecDCTArray[ ROWY ][ COLX ];     //YX order
+__device__ float d_vecDCT2DArray[ ROWY ][ COLX ];   //YX order
+
+//DCT2D GPU kernel
+__global__ void parentColsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
 {
-    unsigned blockId = blockIdx.x;
-    dctTmpChild[ blockId ] = spatInChild[ blockId ] * __cosf( *childSpecCoeffNo * d_LUTspat[ blockId ]   );
+//                                  COLS threads no        
+    unsigned colDCT = blockIdx.x * d_BlThKernel[ 3 ] + threadIdx.x;
+    __shared__ double singleAC_DCT2D[ ROWY ];
+    __shared__ double singleDCCol[ COLX ]; //dct1D single col sum via all cols
+    singleDCCol[ colDCT ] = d_vecDCTArray[ 0 ][ colDCT ];
+    for ( unsigned k = 1; k < ROWY; k++ )
+    {
+        singleAC_DCT2D[ k ] = 0.0f;
+        for ( unsigned yy = 0; yy < ROWY; yy++ )
+            singleAC_DCT2D[ k ] += d_vecDCTArray[ yy ][ colDCT ] * __cosf( float( k ) * d_LUTrowsY[ yy ] );
+        d_vecDCT2DArray[ k ][ colDCT ] = float( singleAC_DCT2D[ k ] ) * sqrtf( 2.0f / float( d_ROWsY[ 0 ] ) );
+        singleDCCol[ colDCT ] += d_vecDCTArray[ k ][ colDCT ];
+    }
+    d_vecDCT2DArray[ 0 ][ colDCT ] = float( singleDCCol[ colDCT ] ) / sqrtf( float( d_ROWsY[ 0 ] ) );
 }
 
-__global__ void parentKernel( float* specCoeffNo, float* spatIn, float* dctTmp, float* specOut )       
+//DCT1D GPU kernel
+__global__ void parentRowsDCT( )                            //rowY steered
 {
-    for ( *specCoeffNo = 1; *specCoeffNo < 1920; *specCoeffNo += 1 )     //note child kernel  blockIDx = *specCoeffNo
+//     unsigned rowDCT = blockIdx.x; 
+//                                  ROWS threads no        
+    unsigned rowDCT = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;    
+    d_vecDCTArray[ rowDCT ][ 0 ] = reduce( seq, d_vecDArray[ rowDCT ], d_vecDArray[ rowDCT ] + d_COLsX[ 0 ] ) / sqrtf( float( d_COLsX[ 0 ] ) );
+    __shared__ double singleACDCT[ COLX ];
+    for ( unsigned k = 1; k < COLX; k++ )
     {
-        grandChildKernel<<< 1920, 1 >>>( spatIn, specCoeffNo, dctTmp );
-        cudaDeviceSynchronize();
-        specOut[ unsigned( *specCoeffNo ) ] = reduce( seq, dctTmp, dctTmp + d_N[ 0 ] ) *  d_sqrConst[ 0 ]; //note float lossy quantizer noise as trade-off: speed/accuracy
-//         if ( unsigned( *specCoeffNo ) < 10 )
-//             printf( "DCT[%i]: %f\n", unsigned( *specCoeffNo ), specOut[ unsigned( *specCoeffNo ) ] ); 
+        singleACDCT[ k ] = 0.0f;
+        for ( unsigned xx = 0; xx < COLX; xx++ )
+            singleACDCT[ k ] += d_vecDArray[ rowDCT ][ xx ] * __cosf( float( k ) * d_LUTcolsX[ xx ] );
+        d_vecDCTArray[ rowDCT ][ k ] = float( singleACDCT[ k ] ) * sqrtf( 2.0f / float( d_COLsX[ 0 ] ) );
     }
 }
-*/
 
-__global__ void grandChildKernel( float* spatInChild, float* childSpecCoeffNo, float &dctTmpChild )    //up 65536 blocks for single thread
+//populater 1D array to 2D via Dynamic Parallelism ( cols on rows )
+__global__ void populateColsKernel( unsigned childRow, float* d_vecD_tmpTransfarray )
 {
-    unsigned blockId = blockIdx.x;
-    dctTmpChild[ unsigned( childSpecCoeffNo ) ][ blockId ] = spatInChild[ blockId ] * __cosf( *childSpecCoeffNo * d_LUTspat[ blockId ]   );
+//                                  COLX threads no    
+    unsigned colInd = blockIdx.x * d_BlThKernel[ 3 ] + threadIdx.x;
+    d_vecDArray[ childRow ][ colInd ] = d_vecD_tmpTransfarray[ childRow * d_COLsX[ 0 ] + colInd ];
+}
+__global__ void populateRowsKernel( float* d_vecD_tmpTransfarray )
+{
+//                                  ROWS threads no    
+    unsigned rowInd = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;
+    populateColsKernel<<< d_BlThKernel[ 2 ], d_BlThKernel[ 3 ] >>>( rowInd, d_vecD_tmpTransfarray );
 }
 
-__device__ float LUTs [ LUTm ][ LUTk ]; //lowers global data transfers
-__device__ float dctTmp2D[ 1920 ][ 1920 ]; 
-
-__global__ void parentKernel( float* specCoeffNo, float* spatIn, float* dctTmp2D, float* specOut )       
+//print DCT1D array elements kernel
+__global__ void printDCT1D()
 {
-    for ( *specCoeffNo = 1; *specCoeffNo < 1920; *specCoeffNo += 1 )     //note child kernel  blockIDx = *specCoeffNo
-    {
-        grandChildKernel<<< 1920, 1 >>>( spatIn, specCoeffNo, dctTmp2D[ unsigned( *specCoeffNo ) ] );
-        cudaDeviceSynchronize();
-//         specOut[ unsigned( *specCoeffNo ) ] = reduce( seq, dctTmp2D[ unsigned( *specCoeffNo ) ], dctTmp2D[ unsigned( *specCoeffNo ) ] + d_N[ 0 ] ) *  d_sqrConst[ 0 ]; //note float lossy quantizer noise as trade-off: speed/accuracy
-//         if ( unsigned( *specCoeffNo ) < 10 )
-//             printf( "DCT[%i]: %f\n", unsigned( *specCoeffNo ), specOut[ unsigned( *specCoeffNo ) ] ); 
-    }
+    unsigned y = blockIdx.x; unsigned x = threadIdx.x;
+    printf( "d_vecDCTArray[y=%i][x=%i]: %f \n", y, x, d_vecDCTArray[ y ][ x ] );
 }
- 
-int main( int argc, char *argv[] )  //DCT 1D is fit to size 1920!!!
+
+//print DCT2D array elements kernel
+__global__ void printDCT2D()
 {
-    clock_t t( clock() );
-    N = atoi( argv[ argc - 1 ] ); 
-    if ( N == 0 ) 
-    {
-        cout << "There are no input arguments!" << endl;
-        cudaDeviceSynchronize();
-        return 0;
-    }
-    else
-        printf( "N = %i\n", N );
-    cudaMemcpyToSymbol( d_N, &N, sizeof( float ) );
-    
-////    THRUST example       h_PI 
-    int ROWY = 2;
-    int COLX = N;
+    unsigned y = blockIdx.x; unsigned x = threadIdx.x;
+    printf( "d_vecDCT2DArray[y=%i][x=%i]: %f \n", y, x, d_vecDCT2DArray[ y ][ x ] );
+}
+
+int main()
+{
+////    THRUST example data ( not ideal - should be used 1D array, but it is less intuitive, especially multidimensional indexing )
     device_vector< float > dim1( COLX ); sequence( device, dim1.begin(), dim1.end(), 0.1f );   
+//  default data container thrust::device_vector< float >[ 2D ]; 
     device_vector< float > d_vecD[ ROWY ]; 
-    device_vector< float > d_vecD_DCT[ ROWY ];
-    for ( unsigned i = 0; i < ROWY; i++ )       //vecD must be init!__global__ void childKernel( float* spatInChild
-    {
+    for ( unsigned i = 0; i < ROWY; i++ )       //vecD must be init! - note that vecD is not neccessary to be a constant size via 1D ( sometimes useful for sparse data! )
         d_vecD[ i ] = dim1;
-        d_vecD_DCT[ i ] = dim1;
-    }
-    cout << "d_vecD[ 0 ][ 1 ]: " << d_vecD[ 0 ][ 1 ] << endl;
-    cout << "d_vecD_Row[0].size(): " << int( device_vector< float >( d_vecD[ 0 ] ).size() ) << endl;
     
-//    //further processing 1D d_vecD_Row[0]
-    float h_sqrtConst = sqrt( 2.0f / float( N ) ); //constant device variable sqrt(2/N)
-    cudaMemcpyToSymbol( d_sqrConst, &h_sqrtConst, sizeof( float ) );
+//  populate each GPUThread constant cache variables
+    float h_LUTcolsX[ COLX ];   //constant device variable LUT spatial argument of rows freq. cosf() - const part of cosine transform base vectors
+    float h_LUTrowsY[ ROWY ];   //constant device variable LUT spatial argument of cols freq. cosf() - const part of cosine transform base vectors
+    for ( unsigned i = 0; i < COLX; i++ )
+        h_LUTcolsX[ i ] = ( h_PI / float( COLX ) ) * ( i + 0.5f );
+    for ( unsigned i = 0; i < ROWY; i++ )
+        h_LUTrowsY[ i ] = ( h_PI / float( ROWY ) ) * ( i + 0.5f );
+    cudaMemcpyToSymbol( d_LUTcolsX, &h_LUTcolsX, sizeof( float ) * COLX );
+    cudaMemcpyToSymbol( d_LUTrowsY, &h_LUTrowsY, sizeof( float ) * ROWY );
     
-    float h_LUTspat[ N ];   //constant device variable LUT spatial argument of freq. cosf()
-    for ( unsigned i = 0; i < N; i++ )
-        h_LUTspat[ i ] = ( h_PI / float( N ) ) * ( i + 0.5f );
-    cudaMemcpyToSymbol( d_LUTspat, &h_LUTspat, N * sizeof( float ) );
-    
-////note DYNAMIC PARALLELISM FOR EACH - writing kernel:
-//  //DCT1D( d_vecD[ 0 ] ) DC freq.
-    d_vecD_DCT[ 0 ][ 0 ] = reduce( d_vecD[0].begin(), d_vecD[0].end() ) / sqrt( float( N ) );
-    cout << "d_vecD_DCT[ 0 ][ 0 ]: " << d_vecD_DCT[ 0 ][ 0 ] << endl;
-    
-//  //DCT1D( d_vecD[ 0 ] ) AC freq.    
-//I) g(m)*__cosf(LUTspat*k)
-    float *d_vecD_tmpTransfarray;     //shared memory variable candidate -        note FOR_EACH CANDIDATE also P.S. one Malloc for any
-    cudaMalloc( ( void** ) &d_vecD_tmpTransfarray, sizeof( float ) * N );
-    thrust::copy( d_vecD[ 0 ].begin(), d_vecD[ 0 ].end(), thrust::device_ptr< float >(d_vecD_tmpTransfarray)); //d_vecD_DCT[ 0 ] vector
-    float *d_vecD_DCTpriv;     
-    cudaMalloc( ( void** ) &d_vecD_DCTpriv, sizeof( float ) * N );
-    float *d_tmpSpecCoeffNo;     
-    cudaMalloc( ( void** ) &d_tmpSpecCoeffNo, sizeof( double ) * N );
-    
-    float *d_vecD_DCTarray;     
-    cudaMalloc( ( void** ) &d_vecD_DCTarray, sizeof( float ) * N );
+//  device size variables
+//   ROWY 1080 = [0]8     *             [1]135;     COLX 1920 =   [2]8        *        [3]240
+    h_BlThKernel[ 0 ] = 8; h_BlThKernel[ 1 ] = 135; h_BlThKernel[ 2 ] = 8; h_BlThKernel[ 3 ] = 240;    
+    cudaMemcpyToSymbol( d_BlThKernel, &h_BlThKernel, sizeof( unsigned ) * 4 );
+    cudaMemcpyToSymbol( d_ROWsY, &ROWY, sizeof( unsigned ) * 1 ); cudaMemcpyToSymbol( d_COLsX, &COLX, sizeof( unsigned ) * 1 );
 
-    parentKernel<<< 1, 1 >>>( d_tmpSpecCoeffNo, d_vecD_tmpTransfarray, d_vecD_DCTpriv, d_vecD_DCTarray );    //up to 1024 dynPar threads!
+//  //DCT1D( d_vecD in GPUmemory copy via rows )
+    float *d_vecD_tmpTransfarray;
+    cudaMalloc( ( void** ) &d_vecD_tmpTransfarray, sizeof( float ) * ROWY * COLX );
+    for ( unsigned i = 0; i < ROWY; i++ )
+        copy( device, d_vecD[ i ].begin(), d_vecD[ i ].end(), device_ptr< float >( &d_vecD_tmpTransfarray[ i * COLX ] ) );
     
+//             ROWS = 1080: ROWSBl = 8          ROWSTh = 135    
+    populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( d_vecD_tmpTransfarray );    //populate 2D array from temporary 1D
+    cudaFree( d_vecD_tmpTransfarray );                                                          //free temporary 1D
+//             ROWS = 1080: ROWSBl[0] = 8      ROWSTh[1] = 135        
+    parentRowsDCT<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>();                                //DCT 1D via rows computed from definition - no methods enhancement
+//                          COLX 1920 =   [2]8   *        [3]240    
+    parentColsDCT2D<<< h_BlThKernel[ 2 ], h_BlThKernel[ 3 ] >>>();                              //DCT 2D via DCT1D cols
+//               nY  nX
+    printDCT1D<<< 2, 10 >>>();                                                                  //print DCT1D results
+//               nY  nX
+    printDCT2D<<< 2, 2 >>>();                                                                   //print DCT2D results
     
-    cudaFree( d_tmpSpecCoeffNo );           //tmp spectrum coefficient number
-    cudaFree( d_vecD_DCTpriv );             //DCT tmp var
-    cudaFree( d_vecD_DCTarray );            //DCT 1D result
-    cudaFree( d_vecD_tmpTransfarray );   //dynPar deallocation
-    cudaFree( d_sqrConst );                 //sqrt 2/N free
-    cudaFree( d_LUTspat );                  //spatial LUT
-    cudaFree( d_N );                        //device size N
+//  free gpu memory     
+    cudaFree( d_ROWsY );                    //rowsY device constant
+    cudaFree( d_COLsX );                    //colsX device constant
+    cudaFree( d_BlThKernel );               //Blocks & Threads organise for row-col and col-row access
+    cudaFree( d_LUTcolsX );                 //spatial LUT
+    cudaFree( d_LUTrowsY );                 //spatial LUT
     cudaDeviceSynchronize();
     return 0;
 }
-
-
-
-
-
+//P.S. rows 1080 blocks could be called directly - few times slower in comparision to <<<8_Blocks,135_Threads>>> cause hardware organisation,
+//P.P.S. note Dynamic Parallelism could efficiently copmpute up to 5D nested access to data in parallel ( unless N(1:5)^5 < 2^31-1 blocks ),
+//P.P.P.S. note more computations in single thread is less costly than additional stage of Dynamic Parallelism - there is a trade-off,
+//P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ).
