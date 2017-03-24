@@ -30,16 +30,19 @@ __global__ void parentColsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
 {
 //                                  COLS threads no        
     unsigned colDCT = blockIdx.x * d_BlThKernel[ 3 ] + threadIdx.x;
-    __shared__ double singleAC_DCT2D[ ROWY ];
-    __shared__ double singleDCCol[ COLX ]; //dct1D single col sum via all cols
-    singleDCCol[ colDCT ] = d_vecDCTArray[ 0 ][ colDCT ];
+    double singleAC_DCT2D[ ROWY ];
+    __shared__ double singleDCCol[ COLX ]; //perThread shared memory
+    float singleCol[ ROWY ];
+    for ( unsigned yy = 0; yy < ROWY; yy++ )
+        singleCol[ yy ] = double( d_vecDCTArray[ yy ][ colDCT ] );
+    singleDCCol[ colDCT ] = double( singleCol[ 0 ] ); 
     for ( unsigned k = 1; k < ROWY; k++ )
     {
         singleAC_DCT2D[ k ] = 0.0f;
         for ( unsigned yy = 0; yy < ROWY; yy++ )
-            singleAC_DCT2D[ k ] += d_vecDCTArray[ yy ][ colDCT ] * __cosf( float( k ) * d_LUTrowsY[ yy ] );
+            singleAC_DCT2D[ k ] += singleCol[ yy ] * __cosf( float( k ) * d_LUTrowsY[ yy ] );
         d_vecDCT2DArray[ k ][ colDCT ] = float( singleAC_DCT2D[ k ] ) * sqrtf( 2.0f / float( d_ROWsY[ 0 ] ) );
-        singleDCCol[ colDCT ] += d_vecDCTArray[ k ][ colDCT ];
+        singleDCCol[ colDCT ] += double( singleCol[ k ] );
     }
     d_vecDCT2DArray[ 0 ][ colDCT ] = float( singleDCCol[ colDCT ] ) / sqrtf( float( d_ROWsY[ 0 ] ) );
 }
@@ -49,15 +52,18 @@ __global__ void parentRowsDCT( )                            //rowY steered
 {
 //                                  ROWS threads no        
     unsigned rowDCT = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;    
-    d_vecDCTArray[ rowDCT ][ 0 ] = reduce( seq, d_vecDArray[ rowDCT ], d_vecDArray[ rowDCT ] + d_COLsX[ 0 ] ) / sqrtf( float( d_COLsX[ 0 ] ) );
-    __shared__ double singleACDCT[ COLX ];
+    double singleACDCT[ COLX ];
+    float singleRow[ COLX ]; //load single row to local variable - omits costly read from global memory in nested loop
+    for ( unsigned xx = 0; xx < COLX; xx++ )
+        singleRow[ xx ] = double( d_vecDArray[ rowDCT ][ xx ] );
     for ( unsigned k = 1; k < COLX; k++ )
     {
         singleACDCT[ k ] = 0.0f;
         for ( unsigned xx = 0; xx < COLX; xx++ )
-            singleACDCT[ k ] += d_vecDArray[ rowDCT ][ xx ] * __cosf( float( k ) * d_LUTcolsX[ xx ] );
-        d_vecDCTArray[ rowDCT ][ k ] = float( singleACDCT[ k ] ) * sqrtf( 2.0f / float( d_COLsX[ 0 ] ) );
+            singleACDCT[ k ] += double( singleRow[ xx ] * __cosf( float( k ) * d_LUTcolsX[ xx ] ) );
+        d_vecDCTArray[ rowDCT ][ k ] = float( singleACDCT[ k ] ) * sqrtf( 2.0f / float( d_COLsX[ 0 ] ) );        
     }
+    d_vecDCTArray[ rowDCT ][ 0 ] = reduce( seq, d_vecDArray[ rowDCT ], d_vecDArray[ rowDCT ] + d_COLsX[ 0 ] ) / sqrtf( float( d_COLsX[ 0 ] ) );     //DC DCT1D computed with thrust reduce for rows
 }
 
 //populater 1D array to 2D via Dynamic Parallelism ( cols on rows )
@@ -142,5 +148,5 @@ int main()
 }
 //P.S. rows 1080 blocks could be called directly - few times slower in comparision to <<<8_Blocks,135_Threads>>> cause hardware organisation,
 //P.P.S. note Dynamic Parallelism could efficiently copmpute up to 5D nested access to data in parallel ( unless N(1:5)^5 < 2^31-1 blocks ),
-//P.P.P.S. note more computations in single thread is less costly than additional stage of Dynamic Parallelism - there is a trade-off,
-//P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ).
+//P.P.P.S. note more computations in single thread is less costly than additional stage of Dynamic Parallelism - there is a trade-off ( #sudo nvprof ./a.out ),
+//P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ). Results are not too accurate for DCT2D transform.
