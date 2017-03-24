@@ -147,6 +147,6 @@ int main()
     return 0;
 }
 //P.S. rows 1080 blocks could be called directly - few times slower in comparision to <<<8_Blocks,135_Threads>>> cause hardware organisation,
-//P.P.S. note Dynamic Parallelism could efficiently copmpute up to 5D nested access to data in parallel ( unless N(1:5)^5 < 2^31-1 blocks ),
+//P.P.S. note Dynamic Parallelism could efficiently compute up to 5D nested access to data in parallel ( unless N(1:5)^5 < 2^31-1 blocks ),
 //P.P.P.S. note more computations in single thread is less costly than additional stage of Dynamic Parallelism - there is a trade-off ( #sudo nvprof ./a.out ),
 //P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ). Results are not too accurate for DCT2D transform.
