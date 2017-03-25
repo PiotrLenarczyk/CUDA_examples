@@ -66,7 +66,7 @@ __global__ void parentRowsDCT( )                            //rowY steered
     d_vecDCTArray[ rowDCT ][ 0 ] = reduce( seq, d_vecDArray[ rowDCT ], d_vecDArray[ rowDCT ] + d_COLsX[ 0 ] ) / sqrtf( float( d_COLsX[ 0 ] ) );     //DC DCT1D computed with thrust reduce for rows
 }
 
-//populater 1D array to 2D via Dynamic Parallelism ( cols on rows )
+//populate 1D array to 2D via Dynamic Parallelism ( cols on rows )
 __global__ void populateColsKernel( unsigned childRow, float* d_vecD_tmpTransfarray )
 {
 //                                  COLX threads no    
