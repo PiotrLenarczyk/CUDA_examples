@@ -7,6 +7,7 @@ DynParFLAGS = -arch=sm_35 -rdc=true
 
 NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
 NVINC = -I /usr/include/thrust/
+# NVCC = /usr/bin/nvcc -ftz=true -prec-div=false -prec-sqrt=false $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
 NVCC = /usr/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
 
 #NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)

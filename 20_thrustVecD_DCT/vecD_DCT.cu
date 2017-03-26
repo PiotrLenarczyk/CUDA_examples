@@ -24,9 +24,49 @@ __constant__ unsigned d_BlThKernel[ 4 ]; //ROWY 1080 =8*135; COLX 1920 = 8*240; 
 __device__ float d_vecDArray[ ROWY ][ COLX ];       //YX order
 __device__ float d_vecDCTArray[ ROWY ][ COLX ];     //YX order
 __device__ float d_vecDCT2DArray[ ROWY ][ COLX ];   //YX order
+__device__ float d_vecInvDCTArray[ ROWY ][ COLX ];       //YX order
+__device__ float d_vecInvDArray[ ROWY ][ COLX ];       //YX order
+
+__global__ void rowsIDCT1D()
+{
+//                                  ROWS threads no        
+    unsigned rowDCT = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x; 
+    double singleInvArray[ COLX ];
+    float singleRow[ COLX ]; //load single row to local variable - omits costly reads from global memory in nested loop
+    for ( unsigned xx = 0; xx < COLX; xx++ )
+        singleRow[ xx ] = d_vecInvDCTArray[ rowDCT ][ xx ];
+    float const_PI = 3.1415926535897932384626 / float( d_COLsX[ 0 ] );  
+    float const_DC1D = singleRow[ 0 ] / sqrtf( float( d_COLsX[ 0 ] ) );
+    for ( unsigned m = 0; m < COLX; m++ )                                   //nested loops should be parallelised if possible
+    {
+        singleInvArray[ m ] = 0.0f;
+        for ( unsigned xx = 1; xx < COLX; xx++ )
+            singleInvArray[ m ] += double( singleRow[ xx ] * __cosf( const_PI * float( xx ) * ( float( m ) + 0.5 ) ) );
+        d_vecInvDArray[ rowDCT ][ m ] = const_DC1D + float( singleInvArray[ m ] ) * sqrtf( 2.0f / float( d_COLsX[ 0 ] ) );     
+    }
+}
+
+__global__ void colsIDCT2D()            //DCT III type - inverse to DCT II type computed without LUT's - used local variables
+{
+//                                  COLS threads no    
+    unsigned colDCT = blockIdx.x * d_BlThKernel[ 3 ] + threadIdx.x;
+    double singleAC_InvDCT2D[ ROWY ];
+    float singleCol[ ROWY ];
+    for ( unsigned yy = 0; yy < ROWY; yy++ )
+        singleCol[ yy ] = d_vecDCT2DArray[ yy ][ colDCT ];
+    float const_PI = 3.1415926535897932384626 / float( d_ROWsY[ 0 ] );
+    float const_DC2D = singleCol[ 0 ] / sqrtf( float( d_ROWsY[ 0 ] ) );
+    for ( unsigned m = 0; m < ROWY; m++ )
+    {
+        singleAC_InvDCT2D[ m ] = 0.0f;
+        for ( unsigned yy = 1; yy < ROWY; yy++ )
+            singleAC_InvDCT2D[ m ] += double( singleCol[ yy ] * __cosf( const_PI * float( yy ) * ( float( m ) + 0.5 ) ) );
+        d_vecInvDCTArray[ m ][ colDCT ] = const_DC2D + float( singleAC_InvDCT2D[ m ] ) * sqrtf( 2.0f / float( d_ROWsY[ 0 ] ) );     
+    }
+}
 
 //DCT2D GPU kernel
-__global__ void parentColsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
+__global__ void colsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
 {
 //                                  COLS threads no        
     unsigned colDCT = blockIdx.x * d_BlThKernel[ 3 ] + threadIdx.x;
@@ -48,12 +88,12 @@ __global__ void parentColsDCT2D() //DCT2D( colsDCT1D( rowsSignal2DSpatial ) )
 }
 
 //DCT1D GPU kernel
-__global__ void parentRowsDCT( )                            //rowY steered
+__global__ void rowsDCT( )                            //rowY steered
 {
 //                                  ROWS threads no        
     unsigned rowDCT = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;    
     double singleACDCT[ COLX ];
-    float singleRow[ COLX ]; //load single row to local variable - omits costly read from global memory in nested loop
+    float singleRow[ COLX ]; //load single row to local variable - omits costly reads from global memory in nested loop
     for ( unsigned xx = 0; xx < COLX; xx++ )
         singleRow[ xx ] = double( d_vecDArray[ rowDCT ][ xx ] );
     for ( unsigned k = 1; k < COLX; k++ )
@@ -78,6 +118,19 @@ __global__ void populateRowsKernel( float* d_vecD_tmpTransfarray )
 //                                  ROWS threads no    
     unsigned rowInd = blockIdx.x * d_BlThKernel[ 1 ] + threadIdx.x;
     populateColsKernel<<< d_BlThKernel[ 2 ], d_BlThKernel[ 3 ] >>>( rowInd, d_vecD_tmpTransfarray );
+}
+//print inversed array elements kernel
+__global__ void printInvDArray()
+{
+    unsigned y = blockIdx.x; unsigned x = threadIdx.x;
+    printf( "d_vecInvDArray[y=%i][x=%i]: %f \n", y, x, d_vecInvDArray[ y ][ x ] );
+}
+
+//print inversed array elements kernel
+__global__ void printInvDCTArray()
+{
+    unsigned y = blockIdx.x; unsigned x = threadIdx.x;
+    printf( "d_vecInvDCTArray[y=%i][x=%i]: %f \n", y, x, d_vecInvDCTArray[ y ][ x ] );
 }
 
 //print DCT1D array elements kernel
@@ -104,8 +157,8 @@ int main()
         d_vecD[ i ] = dim1;
     
 //  populate each GPUThread constant cache variables
-    float h_LUTcolsX[ COLX ];   //constant device variable LUT spatial argument of rows freq. cosf() - const part of cosine transform base vectors
-    float h_LUTrowsY[ ROWY ];   //constant device variable LUT spatial argument of cols freq. cosf() - const part of cosine transform base vectors
+    float h_LUTcolsX[ COLX ];   //constant device variable LUT spatial argument of rows freq. __cosf() - const part of cosine transform base vectors
+    float h_LUTrowsY[ ROWY ];   //constant device variable LUT spatial argument of cols freq. __cosf() - const part of cosine transform base vectors
     for ( unsigned i = 0; i < COLX; i++ )
         h_LUTcolsX[ i ] = ( h_PI / float( COLX ) ) * ( i + 0.5f );
     for ( unsigned i = 0; i < ROWY; i++ )
@@ -129,13 +182,20 @@ int main()
     populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( d_vecD_tmpTransfarray );    //populate 2D array from temporary 1D
     cudaFree( d_vecD_tmpTransfarray );                                                          //free temporary 1D
 //             ROWS = 1080: ROWSBl[0] = 8      ROWSTh[1] = 135        
-    parentRowsDCT<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>();                                //DCT 1D via rows computed from definition - no methods enhancement
+    rowsDCT<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>();                                //DCT 1D via rows computed from definition - no methods enhancement
 //                          COLX 1920 =   [2]8   *        [3]240    
-    parentColsDCT2D<<< h_BlThKernel[ 2 ], h_BlThKernel[ 3 ] >>>();                              //DCT 2D via DCT1D cols
+    colsDCT2D<<< h_BlThKernel[ 2 ], h_BlThKernel[ 3 ] >>>();                              //DCT 2D via DCT1D cols
+//                          COLX 1920 =   [2]8   *        [3]240    
+    colsIDCT2D<<< h_BlThKernel[ 2 ], h_BlThKernel[ 3 ] >>>(); 
+    rowsIDCT1D<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>();
 //               nY  nX
-    printDCT1D<<< 2, 10 >>>();                                                                  //print DCT1D results
+    printDCT1D<<< 3, 3 >>>();                                                                  //print DCT1D results
 //               nY  nX
-    printDCT2D<<< 2, 2 >>>();                                                                   //print DCT2D results
+    printDCT2D<<< 3, 3 >>>();                                                                   //print DCT2D results
+//               nY  nX
+    printInvDCTArray<<< 3, 3 >>>();
+//               nY  nX
+    printInvDArray<<< 3, 3 >>>();
     
 //  free gpu memory     
     cudaFree( d_ROWsY );                    //rowsY device constant
@@ -149,4 +209,4 @@ int main()
 //P.S. rows 1080 blocks could be called directly - few times slower in comparision to <<<8_Blocks,135_Threads>>> cause hardware organisation,
 //P.P.S. note Dynamic Parallelism could efficiently compute up to 5D nested access to data in parallel ( unless N(1:5)^5 < 2^31-1 blocks ),
 //P.P.P.S. note more computations in single thread is less costly than additional stage of Dynamic Parallelism - there is a trade-off ( #sudo nvprof ./a.out ),
-//P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ). Results are not too accurate for DCT2D transform.
+//P.P.P.P.S DCT2D cols( DCT1D( dataRows ) ) is equivalent to DCT2D rows( DCT1D( dataCols ) ). Results are not too accurate for DCT2D transform - better approach would be to extract DCT from cuFFT spectrum part ( with constant multiplication ).
