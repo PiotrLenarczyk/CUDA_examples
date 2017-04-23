@@ -6,11 +6,11 @@ DynParFLAGS = -arch=sm_35 -rdc=true
 # NVCC = /usr/local/cuda-8.0/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
 
 NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
-NVINC = -I /usr/include/thrust/
+NVINC = -I /usr/include/thrust/ /usr/local/cuda-8.0/targets/x86_64-linux/include/thrust/
 # NVCC = /usr/bin/nvcc -ftz=true -prec-div=false -prec-sqrt=false $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
-NVCC = /usr/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
+#NVCC = /usr/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
 
-#NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
+NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 
 # here are all the objects
 GPUOBJS = vecD_DCT.o 
