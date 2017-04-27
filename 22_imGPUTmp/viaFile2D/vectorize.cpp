@@ -13,23 +13,26 @@ using namespace std;
 QVector < QString > imName;
 QVector < QImage > imVec;
 QImage imSingleton;
-int i, x, y, X, Y;
+unsigned imNo, i, x, y, X, Y;
 
 int main( void )
 {
     imName.push_back( "lena.jpg" );
     if ( !imSingleton.load( imName[ 0 ] ) ) { cerr << "Image opening error!\n"; return -1; }
     imVec.push_back( imSingleton );
+    imNo = ( unsigned )imVec.size();
+    
     ofstream imagesFile;    //2*intSizeYX[image]; YX*floatLuminance[image];
     imagesFile.open( "gpuCode/imFile.txt", ios::out | ios::binary );
-    for ( i = 0; i < imVec.size(); i++ )
+    imagesFile.write( reinterpret_cast< char* >( &imNo ), 1 * sizeof( unsigned ) ); 
+    for ( i = 0; i < (unsigned)imVec.size(); i++ )
     {
         X = imVec[ i ].width();
         Y = imVec[ i ].height();
         vector < float > imY( X * Y, 0.0f );
         QRgb *lineTmp;
-        imagesFile.write( reinterpret_cast< char* >( &Y ), 1 * sizeof( int ) ); 
-        imagesFile.write( reinterpret_cast< char* >( &X ), 1 * sizeof( int ) ); 
+        imagesFile.write( reinterpret_cast< char* >( &Y ), 1 * sizeof( unsigned ) ); 
+        imagesFile.write( reinterpret_cast< char* >( &X ), 1 * sizeof( unsigned ) ); 
         for ( y = 0; y < Y; y++ )
         {
             lineTmp = (QRgb *)imVec[ i ].scanLine( y );
