@@ -5,7 +5,6 @@
 #include <string>
 
 using namespace std;
-vector< float > vec( 10, 401.1f );
 /*
 
 touch a.out && rm a.out && qmake && make && clear && gdb -ex run ./a.out
@@ -14,6 +13,7 @@ touch a.out && rm a.out && qmake && make && clear && gdb -ex run ./a.out
 
 int main( int argc, char* argv[] )
 {
+    vector< float > vec( 10, 401.1f );
     cout << "vec[3]: " << vec[ 3 ] << endl;
     cout << "&vec: " << &vec << endl;
     cout << "&vec[0]: " << &vec[ 0 ] << endl;
