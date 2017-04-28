@@ -152,12 +152,12 @@ int main( int argc, char* argv[] )
     
 //     t = clock();
 //     for ( i = 0; i < h_matNo; i++ )
-//         populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( i );
+//         populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( i ); //dynamic parallelism 2 stages ( via 2D )
 //     cudaDeviceSynchronize();
 //     cout << "sequential kernels CPU clocks: " << clock() - t << endl;
 //     
 //     t = clock();
-//     populateMatsKernel<<< 3, 1 >>>();
+//     populateMatsKernel<<< 3, 1 >>>();    //dynamic parallelism 3 stages ( via 3D )
 //     cudaDeviceSynchronize();
 //     cout << "DynPar kernels CPU clocks: " << clock() - t << endl;
     print<<<1,1>>>();
