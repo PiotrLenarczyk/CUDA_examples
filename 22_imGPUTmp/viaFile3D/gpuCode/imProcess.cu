@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <iterator>
+#include <time.h>
 //THRUST
 #include <thrust/host_vector.h>         
 #include <thrust/device_vector.h>       
@@ -24,24 +25,45 @@ const unsigned MATNo = 10;
 unsigned i, h_matNo;
 const unsigned h_BlThKernel[ 2 ] = { 16, 256 };
 //device variables
-__constant__    unsigned    d_matsNo[ MATNo ];
-__constant__    unsigned    d_ROWsY[ MATNo ];
-__constant__    unsigned    d_COLsX[ MATNo ];
+__constant__    unsigned    d_ROWY[ 1 ];    //const ROWY
+__constant__    unsigned    d_COLX[ 1 ];    //const COLX
+__constant__    unsigned    d_matsNo[ 1 ];
+__constant__    unsigned    d_matsSizes[ MATNo ];//image dependend
+__constant__    unsigned    d_ROWsY[ MATNo ];//image dependend
+__constant__    unsigned    d_COLsX[ MATNo ];//image dependend
 __constant__    unsigned    d_BlThKernel[ 2 ];                 // 16 Blocks; 256 Threads = 4096 Threads per dimension 
 __device__      float       d_vecDArray[ MATNo ][ ROWY ][ COLX ];       //matYX order
 __device__      float       d_vecD_tmpTransfarray[ MATNo * ROWY * COLX ];
+__global__      void        syncKernel(){}
+
+__global__ void populateMatRowsColsKernel() 
+{
+    unsigned matZ = blockIdx.z;
+    unsigned globalInd = matZ * blockIdx.y * blockIdx.x * threadIdx.x;
+//                   globalY       Y
+    unsigned matY = blockIdx.y;
+}
 
 __global__ void populateColsKernel( unsigned childMatInd, unsigned childRow )
 {//                                  COLX threads no    
     unsigned colInd = blockIdx.x * d_BlThKernel[ 0 ] + threadIdx.x;
-    d_vecDArray[ childMatInd ][ childRow ][ colInd ] = 
-                d_vecD_tmpTransfarray[ childRow * d_COLsX[ childMatInd ] + colInd + 
-                                       childMatInd * d_ROWsY[ childMatInd ] * d_COLsX[ childMatInd ] ];
+    unsigned rowColTmp;
+    if ( childMatInd != 0 ) //scaling index to current matrix via prior matrices YX's
+        rowColTmp = childMatInd - 1;
+    unsigned tmpInd = childRow * d_COLsX[ childMatInd ] + colInd +
+                                       childMatInd * d_ROWsY[ rowColTmp ] * d_COLsX[ rowColTmp ];
+        d_vecDArray[ childMatInd ][ childRow ][ colInd ] = d_vecD_tmpTransfarray[ tmpInd ];
 }
 __global__ void populateRowsKernel( unsigned MatInd )
 {//                                  ROWS threads no    
     unsigned rowInd = blockIdx.x * d_BlThKernel[ 0 ] + threadIdx.x;
     populateColsKernel<<< d_BlThKernel[ 0 ], d_BlThKernel[ 1 ] >>>( MatInd, rowInd );
+}
+
+__global__ void populateMatsKernel()
+{
+    unsigned matInd = blockIdx.x;
+    populateRowsKernel<<< d_BlThKernel[ 0 ], d_BlThKernel[ 1 ] >>>( matInd );
 }
 
 __global__ void printConst()
@@ -58,16 +80,6 @@ __global__ void printConst()
         printf( "d_vecDArray[ %i ][ 0 ][ 1 ]: %f\n", i, d_vecDArray[ i ][ 0 ][ 1 ] );
         printf( "d_vecDArray[ %i ][ 0 ][ 2 ]: %f\n", i, d_vecDArray[ i ][ 0 ][ 2 ] );
     }
-}
-
-__global__ void print1D()
-{
-    for ( int i = 0; i < 3; i++ )
-        printf( "d_vecD_tmpTransfarray[%i]: %f\n", i, d_vecD_tmpTransfarray[ i ] );
-    for ( int i = 0; i < 3; i++ )
-        printf( "d_vecD_tmpTransfarray[%i]: %f\n", 262144 + i, d_vecD_tmpTransfarray[ 262144 + i ] );
-    for ( int i = 0; i < 3; i++ )
-        printf( "d_vecD_tmpTransfarray[%i]: %f\n", 262144 + 262144 + i, d_vecD_tmpTransfarray[ 262144 + 262144 + i ] );
 }
 
 int main( int argc, char* argv[] )
@@ -93,17 +105,7 @@ int main( int argc, char* argv[] )
         cout << "vecIn[ " << i << " ][ " << vecIn[ 0 ] << " ]" << endl;
     }
     data_fileIn.close();
-/*
-imY[ 0 ][ 0 ]: 154.162
-imY[ 0 ][ 1 ]: 155.021
-imY[ 0 ][ 2 ]: 156.136
-imY[ 1 ][ 0 ]: 140.684
-imY[ 1 ][ 1 ]: 63.9482
-imY[ 1 ][ 2 ]: 57.9158
-imY[ 2 ][ 0 ]: 22.6233
-imY[ 2 ][ 1 ]: 22.6233
-imY[ 2 ][ 2 ]: 22.9316
- */   
+
     cout << "vecDIn.size(): " << vecDIn.size() << endl;
     cout << "vecDIn[0][0]: " << vecDIn[ 0 ] << endl;
     cout << "vecDIn[0][1]: " << vecDIn[ 1 ] << endl;
@@ -117,33 +119,57 @@ imY[ 2 ][ 2 ]: 22.9316
 
     
     cout << "================== GPU ======================" << endl;
+    unsigned h_matsSizes[ h_matNo ];
+    for ( i = 0; i < h_matNo; i++ ) h_matsSizes[ i ] = h_ROWsY[ i ] * h_COLsX[ i ];
+    cudaMemcpyToSymbol( d_COLX, &COLX, sizeof( unsigned ) );
+    cudaMemcpyToSymbol( d_ROWY, &ROWY, sizeof( unsigned ) );
     cudaMemcpyToSymbol( d_matsNo, &h_matNo, sizeof( unsigned ) );
+    cudaMemcpyToSymbol( d_matsSizes, &h_matsSizes, sizeof( unsigned ) * h_matNo );
     cudaMemcpyToSymbol( d_ROWsY, &h_ROWsY, sizeof( unsigned ) * h_matNo );
     cudaMemcpyToSymbol( d_COLsX, &h_COLsX, sizeof( unsigned ) * h_matNo );
     cudaMemcpyToSymbol( d_BlThKernel, &h_BlThKernel, sizeof( unsigned ) * 2 );
     cudaMemcpyToSymbol( d_vecD_tmpTransfarray, &vecDIn[ 0 ], sizeof( float ) * vecDIn.size() );
-    print1D<<< 1, 1 >>>();
-
+    cudaFree( d_vecD_tmpTransfarray );
+    
+    clock_t t = clock();
+    unsigned blocksMatY = 0, blocksMatX = 0;
+    for ( i = 0; i < h_matNo; i++ )
+    {
+        blocksMatY += h_ROWsY[ i ];
+        blocksMatX += h_COLsX[ i ];
+    }
+//                                        Y[mat]    X[ mat ]  /     x_256           matZ            x_256
+    populateMatRowsColsKernel<<< dim3( blocksMatY, blocksMatX / h_BlThKernel[ 1 ], h_matNo ), h_BlThKernel[ 1 ] >>>();
+    cudaDeviceSynchronize();
+    cout << "1D kernel CPU clocks: " << clock() - t << endl;
     
     
-    blad dla trzeciego zdjecia
-    
-    
-    
+//     t = clock();
 //     for ( i = 0; i < h_matNo; i++ )
-        populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( int(2) );
+//         populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( i );
+//     cudaDeviceSynchronize();
+//     cout << "sequential kernels CPU clocks: " << clock() - t << endl;
+//     
+//     t = clock();
+//     populateMatsKernel<<< 3, 1 >>>();
+//     cudaDeviceSynchronize();
+//     cout << "DynPar kernels CPU clocks: " << clock() - t << endl;
     printConst<<<1,1>>>();
+
 //     std::system( "nvidia-smi" );
     
 //  free gpu memory     
+    cudaFree( d_ROWY );
+    cudaFree( d_COLX );
+    cudaFree( d_matsNo );
+    cudaFree( d_matsSizes );
     cudaFree( d_ROWsY );                    //rowsY device constant
     cudaFree( d_COLsX );                    //colsX device constant
     cudaFree( d_BlThKernel );               //Blocks & Threads organise for row-col and col-row access
     cudaFree( d_vecDArray );
-    cudaFree( d_vecD_tmpTransfarray );
     cudaDeviceSynchronize();
     cudaDeviceReset();
     return 0;
 }
 
-//P.S. and again dynamic parallelism not so fast as expected for 3D data.
+//P.S. and again dynamic parallelism not so fast as expected for 3D data structures in type[][][] manner ( pointers to pointers? ).
