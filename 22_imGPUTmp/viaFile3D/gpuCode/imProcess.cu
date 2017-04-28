@@ -32,16 +32,22 @@ __constant__    unsigned    d_matsSizes[ MATNo ];//image dependend
 __constant__    unsigned    d_ROWsY[ MATNo ];//image dependend
 __constant__    unsigned    d_COLsX[ MATNo ];//image dependend
 __constant__    unsigned    d_BlThKernel[ 2 ];                 // 16 Blocks; 256 Threads = 4096 Threads per dimension 
-__device__      float       d_vecDArray[ MATNo ][ ROWY ][ COLX ];       //matYX order
-__device__      float       d_vecD_tmpTransfarray[ MATNo * ROWY * COLX ];
+__device__      float       d_vecDArray[ MATNo ][ ROWY ][ COLX ];       //images: matZYX order
+__device__      float       d_vecD_tmpTransfarray[ MATNo * ROWY * COLX ]; //images: mat1D[0]mat1D[1]mat1D[2]...
 __global__      void        syncKernel(){}
 
-__global__ void populateMatRowsColsKernel() 
-{
-    unsigned matZ = blockIdx.z;
-    unsigned globalInd = matZ * blockIdx.y * blockIdx.x * threadIdx.x;
-//                   globalY       Y
-    unsigned matY = blockIdx.y;
+__global__ void populateMatsRowsColsKernel() 
+{//convert global1D indexing to local YX indexing of image matrix[ Z ] in 3D space of d_vecDArray[Z][Y][X]
+    unsigned matZ = blockIdx.y, globalInd = 0;
+    if ( matZ > 0 ) globalInd = matZ * blockIdx.x * threadIdx.x;    //mat[ matZ=0 ] handling
+    else            globalInd = blockIdx.x * threadIdx.x;
+    
+    unsigned localInd = globalInd;
+    if ( matZ > 0 ) for ( unsigned i = 0; i < matZ; i++ ) localInd -= d_matsSizes[ i ]; //mat[ matZ=0 ] handling
+    unsigned matY = localInd / d_COLsX[ matZ ];
+    unsigned matX = localInd - matY * d_COLsX[ matZ ];
+    
+    d_vecDArray[ matZ ][ matY ][ matX ] = d_vecD_tmpTransfarray[ globalInd ];
 }
 
 __global__ void populateColsKernel( unsigned childMatInd, unsigned childRow )
@@ -66,16 +72,17 @@ __global__ void populateMatsKernel()
     populateRowsKernel<<< d_BlThKernel[ 0 ], d_BlThKernel[ 1 ] >>>( matInd );
 }
 
-__global__ void printConst()
+__global__ void print()
 {
     printf( "d_matsNo: %i\n", d_matsNo[ 0 ] );
     printf( "blocks: %i\n", d_BlThKernel[ 0 ] );
     printf( "threads: %i\n", d_BlThKernel[ 1 ] );
-    for ( int i = 0; i < 3; i++ )
+    for ( int i = 0; i < d_matsNo[ 0 ]; i++ )
     {
-        printf( "mat[%i]: ", i );
-        printf( " d_ROWsY: %i", d_ROWsY[ i ] );
-        printf( " d_COLsX: %i\n", d_COLsX[ i ] );
+        printf( "mat[%i]: \n", i );
+        printf( "d_matsSizes[%i]: %i [", i, d_matsSizes[ i ] );
+        printf( " d_ROWsY=%i x", d_ROWsY[ i ] );
+        printf( " d_COLsX=%i ]\n", d_COLsX[ i ] );
         printf( "d_vecDArray[ %i ][ 0 ][ 0 ]: %f\n", i, d_vecDArray[ i ][ 0 ][ 0 ] );
         printf( "d_vecDArray[ %i ][ 0 ][ 1 ]: %f\n", i, d_vecDArray[ i ][ 0 ][ 1 ] );
         printf( "d_vecDArray[ %i ][ 0 ][ 2 ]: %f\n", i, d_vecDArray[ i ][ 0 ][ 2 ] );
@@ -116,7 +123,6 @@ int main( int argc, char* argv[] )
     cout << "vecDIn[2][0]: " << vecDIn[ 262144 + 262144 ] << endl;
     cout << "vecDIn[2][1]: " << vecDIn[ 262144 + 262144 + 1 ] << endl;
     cout << "vecDIn[2][2]: " << vecDIn[ 262144 + 262144 + 2 ] << endl;
-
     
     cout << "================== GPU ======================" << endl;
     unsigned h_matsSizes[ h_matNo ];
@@ -129,7 +135,6 @@ int main( int argc, char* argv[] )
     cudaMemcpyToSymbol( d_COLsX, &h_COLsX, sizeof( unsigned ) * h_matNo );
     cudaMemcpyToSymbol( d_BlThKernel, &h_BlThKernel, sizeof( unsigned ) * 2 );
     cudaMemcpyToSymbol( d_vecD_tmpTransfarray, &vecDIn[ 0 ], sizeof( float ) * vecDIn.size() );
-    cudaFree( d_vecD_tmpTransfarray );
     
     clock_t t = clock();
     unsigned blocksMatY = 0, blocksMatX = 0;
@@ -138,8 +143,9 @@ int main( int argc, char* argv[] )
         blocksMatY += h_ROWsY[ i ];
         blocksMatX += h_COLsX[ i ];
     }
-//                                        Y[mat]    X[ mat ]  /     x_256           matZ            x_256
-    populateMatRowsColsKernel<<< dim3( blocksMatY, blocksMatX / h_BlThKernel[ 1 ], h_matNo ), h_BlThKernel[ 1 ] >>>();
+//                                                   BLOCKS.x  / THREADS.x          BLOCKS.y   BLOCKS.z             THREADS.x
+//                                        Y[mat]  *  X[ mat ]  /    x_256            matZ                           x_256
+    populateMatsRowsColsKernel<<< dim3( blocksMatY * blocksMatX / h_BlThKernel[ 1 ], h_matNo,    0 ),        h_BlThKernel[ 1 ] >>>();
     cudaDeviceSynchronize();
     cout << "1D kernel CPU clocks: " << clock() - t << endl;
     
@@ -154,7 +160,7 @@ int main( int argc, char* argv[] )
 //     populateMatsKernel<<< 3, 1 >>>();
 //     cudaDeviceSynchronize();
 //     cout << "DynPar kernels CPU clocks: " << clock() - t << endl;
-    printConst<<<1,1>>>();
+    print<<<1,1>>>();
 
 //     std::system( "nvidia-smi" );
     
@@ -167,6 +173,7 @@ int main( int argc, char* argv[] )
     cudaFree( d_COLsX );                    //colsX device constant
     cudaFree( d_BlThKernel );               //Blocks & Threads organise for row-col and col-row access
     cudaFree( d_vecDArray );
+    cudaFree( d_vecD_tmpTransfarray );
     cudaDeviceSynchronize();
     cudaDeviceReset();
     return 0;
