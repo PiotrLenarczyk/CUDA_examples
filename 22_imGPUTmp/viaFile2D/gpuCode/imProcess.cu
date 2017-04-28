@@ -47,6 +47,7 @@ __global__ void printConst()
     printf( "threads: %i\n", d_BlThKernel[ 1 ] );
     for ( int i = 0; i < 3; i++ )
         printf( "d_vecDArray[ 0 ][ %i ]: %f\n", i, d_vecDArray[ 0 ][ i ] );
+    __syncthreads();
 }
 
 int main( int argc, char* argv[] )
@@ -55,6 +56,8 @@ int main( int argc, char* argv[] )
     //load matrices to GPU:
     std::ifstream data_fileIn;      // NOW it's ifstream
     data_fileIn.open( "imFile.txt", std::ios::in | std::ios::binary );
+    if ( !data_fileIn.is_open() ) { cerr << "File open error!\n"; return -1; }
+    cout << "data_fileIn.is_open: " << data_fileIn.is_open() << endl;
     data_fileIn.read( reinterpret_cast< char* >( &h_matNo ), 1 * sizeof( unsigned ) );
     data_fileIn.read( reinterpret_cast< char* >( &h_ROWsY ), 1 * sizeof( unsigned ) );
     data_fileIn.read( reinterpret_cast< char* >( &h_COLsX ), 1 * sizeof( unsigned ) );
@@ -80,7 +83,6 @@ int main( int argc, char* argv[] )
     cudaFree( d_BlThKernel );               //Blocks & Threads organise for row-col and col-row access
     cudaFree( d_vecDArray );
     cudaFree( d_vecD_tmpTransfarray );
-    
     cudaDeviceSynchronize();
     cudaDeviceReset();
     return 0;
