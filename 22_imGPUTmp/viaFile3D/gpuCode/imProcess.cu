@@ -168,20 +168,20 @@ int main( int argc, char* argv[] )
     cout << "1D blocks " <<  blocksMat / h_BlThKernel[ 1 ] << endl;
     populateMatsRowsColsKernel<<< blocksMat / h_BlThKernel[ 1 ],  h_BlThKernel[ 1 ] >>>();
     cudaDeviceSynchronize();
-    cout << "1D kernel CPU clocks: " << 1000 * double( clock() - t ) / CLOCKS_PER_SEC << "[ms]" <<  endl;
+    cout << "1D kernel CPU clocks: " << double( clock() - t ) / CLOCKS_PER_SEC << "[s]" <<  endl;
     print<<<1,1>>>();
 
     t = clock();
     for ( i = 0; i < h_matNo; i++ )
         populateRowsKernel<<< h_BlThKernel[ 0 ], h_BlThKernel[ 1 ] >>>( i ); //dynamic parallelism 2 stages ( via 2D )
     cudaDeviceSynchronize();
-    cout << "sequential DynPar 2D kernels CPU clocks: " << 1000.0 * double( clock() - t ) / CLOCKS_PER_SEC << "[ms]" << endl;
+    cout << "sequential DynPar 2D kernels CPU clocks: " << double( clock() - t ) / CLOCKS_PER_SEC << "[s]" << endl;
     print<<<1,1>>>();
 
     t = clock();
     populateMatsKernel<<< 3, 1 >>>();    //dynamic parallelism 3 stages ( via 3D )
     cudaDeviceSynchronize();
-    cout << "DynPar 3D kernels CPU clocks: " << 1000.0 * double( clock() - t ) / CLOCKS_PER_SEC << "[ms]" << endl;
+    cout << "DynPar 3D kernels CPU clocks: " << double( clock() - t ) / CLOCKS_PER_SEC << "[s]" << endl;
     print<<<1,1>>>();
 
     std::system( "nvidia-smi" );
