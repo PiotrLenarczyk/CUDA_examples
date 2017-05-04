@@ -6,7 +6,7 @@
 
 using namespace std;
 
-// xfp=single(0.0:0.1:6.3);Xfp=single(dct(xfp));clc;length(Xfp);Xfp(1:5)
+///*OCTAVE M-script*/ xfp=single(0.0:0.1:6.3);Xfp=single(dct(xfp));clc;length(Xfp);Xfp(1:5)
 
 unsigned i;
 const unsigned N = 2048;
