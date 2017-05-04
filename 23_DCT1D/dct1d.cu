@@ -7,7 +7,9 @@
 using namespace std;
 
 unsigned i;
-const unsigned N = 2048;
+const unsigned N = 128;
+unsigned gpuThr = 32;
+unsigned gpuBl = N / gpuThr;
 vector < float > inputVec( N );
 string letter, subFp; const string sep( "_" );
 
@@ -17,11 +19,12 @@ __device__      double d_Xfp64[ N ]; 	//double size per dimension in comparision
 __constant__    unsigned d_N[ 1 ];
 __global__ void printKernel()
 {
-	for ( unsigned i = 0; i < 5; i++ )
+    unsigned resNo = 10;
+	for ( unsigned i = 0; i < resNo; i++ )
         printf( "x[%i]: %f\n", i, d_x[ i ] );
-    for ( unsigned i = 0; i < 5; i++ )
+    for ( unsigned i = 0; i < resNo; i++ )
         printf( "d_Xfp32[%i]: %.6f;   d_Xfp64[%i]: %.6f\n", i, d_Xfp32[ i ], i, d_Xfp64[ i ] );
-	for ( unsigned i = 0; i < 5; i++ )
+	for ( unsigned i = 0; i < resNo; i++ )
         printf( "ix[%i]: %f\n", i, d_ix[ i ] );
     double acc = 0.0f;
     for( unsigned i = 0; i < N; i++ )
@@ -84,17 +87,17 @@ int main( int argc, char* argv[] )
 	cudaMemcpyToSymbol( d_x, &inputVec[ 0 ], sizeof( float ) * ( unsigned )inputVec.size() );
     cudaMemcpyToSymbol( d_N, &N, sizeof( unsigned ) );
     clock_t t = clock();
-    dctKernelFloat<<< N/256, 256 >>>();
+    dctKernelFloat<<< gpuBl, gpuThr >>>();
     cudaDeviceSynchronize();
     cout << "CPU clocks float accumulator: " << double( clock() - t ) << endl;
     
     t = clock();
-    dctKernelDouble<<< N/256, 256 >>>();
+    dctKernelDouble<<< gpuBl, gpuThr >>>();
     cudaDeviceSynchronize();
     cout << "CPU clocks double accumulator: " << double( clock() - t ) << endl;
     
     t = clock();
-    idctKernelFloat<<< N/256, 256 >>>();
+    idctKernelFloat<<< gpuBl, gpuThr >>>();
     cudaDeviceSynchronize();
     cout << "CPU clocks idct float accumulator: " << double( clock() - t ) << endl;
     printKernel<<< 1, 1 >>>();
