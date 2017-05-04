@@ -6,9 +6,11 @@
 
 using namespace std;
 
+// xfp=single(0.0:0.1:6.3);Xfp=single(dct(xfp));clc;length(Xfp);Xfp(1:5)
+
 unsigned i;
-const unsigned N = 128;
-unsigned gpuThr = 32;
+const unsigned N = 2048;
+unsigned gpuThr = 256;
 unsigned gpuBl = N / gpuThr;
 vector < float > inputVec( N );
 string letter, subFp; const string sep( "_" );
@@ -36,14 +38,14 @@ __global__ void printKernel()
 __global__ void idctKernelFloat()
 {
     unsigned ind = blockIdx.x * blockDim.x + threadIdx.x;
-    float constVal = float( ind ) * 3.14159265f / float( N );
+    float constVal = ( float( ind ) + 0.5f ) * 3.14159265f / float( N );
     float sqrConst = sqrtf( 2.0f / float( N ) );
     float tmpX = sqrtf( 1.0f / float( N ) ) * d_Xfp32[ 0 ];
     float accDC = 0.0f, tmpx = 0.0f; 
-    for ( unsigned i = 1; i < N; i++ )   
+    for ( unsigned k = 1; k < N; k++ )   
     {
-        tmpx = d_Xfp32[ i ];
-        tmpX += tmpx * sqrConst * __cosf( constVal * ( float( i ) + 0.5f ) );
+        tmpx = d_Xfp32[ k ];
+        tmpX += tmpx * sqrConst * __cosf( constVal * ( float( k ) ) );
         accDC += tmpx;
     }
     d_ix[ ind ] = tmpX;
