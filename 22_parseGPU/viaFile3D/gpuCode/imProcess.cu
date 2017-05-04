@@ -50,9 +50,12 @@ __global__ void populateMatsRowsColsKernel()
                 acc += d_matsSizes[ i + 1 ];
                 localInd -= d_matsSizes[ i ];
             }
-            
-    matY = localInd / d_COLsX[ matZ ];
-    matX = localInd - matY * d_COLsX[ matZ ];
+    
+    unsigned d_Y = d_ROWsY[ matZ ], d_X = d_COLsX[ matZ ];
+    matY = localInd / d_X;
+    matX = localInd - matY * d_X;
+    if ( ( matY >= d_Y )  || ( matX >= d_X ) )
+        return
     d_vecDArray[ matZ ][ matY ][ matX ] = d_vecD_tmpTransfarray[ globalInd ];
 }
 
@@ -159,12 +162,11 @@ int main( int argc, char* argv[] )
      
     cout << "================== GPU ======================" << endl;
     clock_t t = clock();
-    unsigned blocksMat = 0;
+    unsigned blocksMat = 1;
     for ( i = 0; i < h_matNo; i++ )
     {
         blocksMat += h_ROWsY[ i ] * h_COLsX[ i ];
     }
-//                                  podzielnosc przez h_BlThKernel
     cout << "1D blocks " <<  blocksMat / h_BlThKernel[ 1 ] << endl;
     populateMatsRowsColsKernel<<< blocksMat / h_BlThKernel[ 1 ],  h_BlThKernel[ 1 ] >>>();
     cudaDeviceSynchronize();
