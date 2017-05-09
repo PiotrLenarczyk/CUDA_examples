@@ -36,7 +36,7 @@ DISTNAME      = a.out1.0.0
 DISTDIR = /home/lenarczp/Dokumenty/programowanieGitHub/CUDA_examples/11_qtVecMean/build/a.out1.0.0
 LINK          = g++
 LFLAGS        = -m64 -Wl,-O1
-LIBS          = $(SUBLIBS) -L/usr/local/cuda-8.0/lib64 -lcuda -lcudart -lQt5Core -lpthread 
+LIBS          = $(SUBLIBS) -L/usr/local/cuda-8.0/lib64 -lcuda -lcudart -lcudadevrt -lQt5Core -lpthread 
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -1718,7 +1718,7 @@ ${OBJECTS_DIR}vecMean_cuda.o: HOST_GPU.h \
 		/usr/local/cuda-8.0/include/math_functions_dbl_ptx3.hpp \
 		/usr/local/cuda-8.0/include/device_launch_parameters.h \
 		/usr/lib/gcc/x86_64-linux-gnu/4.9/include/stdint-gcc.h
-	/usr/local/cuda-8.0/bin/nvcc -Wno-deprecated-gpu-targets -m64 -O3 -arch=sm_35 -c -std=c++11 -I/usr/local/cuda-8.0/include  -lcuda -lcudart vecMean.cu -o ${OBJECTS_DIR}vecMean_cuda.o 2>&1 | sed -r "s/\(([0-9]+)\)/:\1/g" 1>&2
+	/usr/local/cuda-8.0/bin/nvcc -Wno-deprecated-gpu-targets -m64 -O3 -arch=sm_35 -c -std=c++11 -I/usr/local/cuda-8.0/include  -lcuda -lcudart -lcudadevrt vecMean.cu -o ${OBJECTS_DIR}vecMean_cuda.o 2>&1 | sed -r "s/\(([0-9]+)\)/:\1/g" 1>&2
 
 compiler_rcc_make_all:
 compiler_rcc_clean:
