@@ -1,11 +1,12 @@
 /* http://advancedlinuxprogramming.com/ */
 /* https://ubuntuforums.org/archive/index.php/t-1426536.html */
 //STL
-#include <QImage>
 #include <iostream>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <iomanip>
+#include <time.h>
 #include "sharedStruct.h"
 //Qt
 #include <QVector>
@@ -46,8 +47,10 @@ int main( void )
     
     loadPicsLuminances();
     
+    clock_t t = clock();
     if ( system( "./aChild.out" ) != 0 ) { cerr << "GPU execution error!\n"; return -1; }
-    
+    cout << "CPU clocks on starting GPUfunction: " << float( clock() - t ) << endl;
+
 //     long destroyShm = data->structShmid;
     freeSHM( data ); //closeSHM( destroyShm );
     return 0;
@@ -74,6 +77,7 @@ void loadPicsLuminances()
         else
             imVec.push_back( imSingleton );
     imNo = ( unsigned )imVec.size();    
+    data->picsNo = imNo;
     unsigned overallSize = 0; unsigned indData = 0;
     for ( i = 0; i < (unsigned)imVec.size(); i++ )
     {
@@ -98,6 +102,7 @@ void loadPicsLuminances()
                 indData++;
             }
         }
+        cout << setprecision( 20 );
         for ( unsigned ii = 0; ii < 3; ii++ )
             cout << "imY[ " << i << " ][ " << ii << " ]: " << imY[ ii ] << endl;
     }

@@ -5,6 +5,7 @@ const unsigned pics = 4;
 struct sharedData
 {
     long structShmid;
+    unsigned picsNo;
     unsigned int size;
     unsigned int picsX[ pics ];
     unsigned int picsY[ pics ];

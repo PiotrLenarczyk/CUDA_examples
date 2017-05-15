@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "sharedStruct.h"
 using std::cout; using std::endl; using std::cerr;
 
@@ -29,10 +30,13 @@ __global__ void printKernel()
 int main( void )
 {
     cout << endl << "========== GPU ================" << endl;
+    clock_t t = clock();
     getSHM( (key_t)1234 ); //load from shared memory to GPU memory
-    cout << "allocated GPU memory usage: " << 100 * (float)data->size / (float)(picAllocX * picAllocY * pics) << "[%]" << endl;
     if ( cudaMemcpyToSymbol( d_pics, &data->value[ 0 ], sizeof( float ) * data->size ) != cudaSuccess ) { cerr << "GPU copy error!\n"; freeGPU(); return -1; }
     printKernel<<< 1, 1 >>>();
+    cudaDeviceSynchronize();
+    cout << "CPU clocks data load to GPU: " << float( clock() - t ) << endl;
+    cout << "allocated GPU memory usage: " << 100 * (float)data->size / (float)(picAllocX * picAllocY * pics) << "[%] for: " << data->picsNo << " pictures" << endl;
     freeGPU();
     freeSHM( data );
     cout << "========== END GPU ============" << endl << endl;
