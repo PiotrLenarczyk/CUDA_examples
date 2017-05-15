@@ -1,8 +1,9 @@
 /* 
- rm a.out aChild.out & make clean && qmake && make && /usr/local/cuda-8.0/bin/nvcc -arch=sm_50 shVarChild.cpp -o aChild.out && clear && ./a.out
+ rm a.out aChild.out & make clean && qmake && make && /usr/local/cuda-8.0/bin/nvcc -arch=sm_XX shVarChild.cu -o aChild.out && clear && ./a.out
  */
 //STL
 #include <iostream>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
@@ -10,22 +11,39 @@
 using std::cout; using std::endl; using std::cerr;
 
 //HOST
+unsigned i;
 long destroySHM;
 int getSHM( key_t key ); //data->structShmid; data->size; data->value
 void freeSHM( struct sharedData* data );
 void closeSHM();
 //GPU
+__device__ float d_pics[ picAllocX * picAllocY * pics ];
+void freeGPU();
+
+__global__ void printKernel()
+{
+    for ( unsigned i = 0; i < 3; i++ )
+        printf( "d_pics[%i]: %f\n", i, d_pics[ i ] );
+}
 
 int main( void )
 {
     cout << endl << "========== GPU ================" << endl;
-    getSHM( (key_t)1234 );
-    
-    /* the FPGA stuff here */
-    
+    getSHM( (key_t)1234 ); //load from shared memory to GPU memory
+    cout << "allocated GPU memory usage: " << 100 * (float)data->size / (float)(picAllocX * picAllocY * pics) << "[%]" << endl;
+    if ( cudaMemcpyToSymbol( d_pics, &data->value[ 0 ], sizeof( float ) * data->size ) != cudaSuccess ) { cerr << "GPU copy error!\n"; freeGPU(); return -1; }
+    printKernel<<< 1, 1 >>>();
+    freeGPU();
     freeSHM( data );
     cout << "========== END GPU ============" << endl << endl;
     return 0;
+}
+
+void freeGPU()
+{
+    cudaFree( d_pics );
+    cudaDeviceSynchronize();
+    cudaDeviceReset();
 }
 
 void freeSHM( struct sharedData* data )

@@ -48,8 +48,8 @@ int main( void )
     
     if ( system( "./aChild.out" ) != 0 ) { cerr << "GPU execution error!\n"; return -1; }
     
-    long destroyShm = data->structShmid;
-    freeSHM( data ); closeSHM( destroyShm );
+//     long destroyShm = data->structShmid;
+    freeSHM( data ); //closeSHM( destroyShm );
     return 0;
 }
 
@@ -74,11 +74,12 @@ void loadPicsLuminances()
         else
             imVec.push_back( imSingleton );
     imNo = ( unsigned )imVec.size();    
-    
+    unsigned overallSize = 0; unsigned indData = 0;
     for ( i = 0; i < (unsigned)imVec.size(); i++ )
     {
         X = imVec[ i ].width();
         Y = imVec[ i ].height();
+        overallSize += X * Y;
         vector < float > imY( X * Y, 0.0f );
         QRgb *lineTmp;
         data->picsX[ i ] = X;
@@ -93,10 +94,12 @@ void loadPicsLuminances()
                                 129.057f * qGreen( lineTmp[ x ] ) +
                                 25.064f  * qBlue( lineTmp[ x ] ) ) );
                 imY[ y * Y + x ] = tmp;
-                data->value[ y * Y + x ] = tmp;
+                data->value[ indData ] = tmp;
+                indData++;
             }
         }
-//         for ( unsigned ii = 0; ii < 3; ii++ )
-//             cout << "imY[ " << i << " ][ " << ii << " ]: " << imY[ ii ] << endl;
+        for ( unsigned ii = 0; ii < 3; ii++ )
+            cout << "imY[ " << i << " ][ " << ii << " ]: " << imY[ ii ] << endl;
     }
+    data->size = overallSize;
 }
