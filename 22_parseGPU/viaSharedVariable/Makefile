@@ -290,7 +290,7 @@ compiler_clean:
 
 ####### Compile
 
-shVar.o: shVar.cpp 
+shVar.o: shVar.cpp sharedStruct.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o shVar.o shVar.cpp
 
 ####### Install
