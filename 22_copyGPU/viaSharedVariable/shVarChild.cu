@@ -35,8 +35,8 @@ int main( void )
     if ( cudaMemcpyToSymbol( d_pics, &data->value[ 0 ], sizeof( float ) * data->size ) != cudaSuccess ) { cerr << "GPU copy error!\n"; freeGPU(); return -1; }
     printKernel<<< 1, 1 >>>();
     cudaDeviceSynchronize();
-    cout << "CPU clocks data load to GPU: " << float( clock() - t ) << endl;
-    cout << "allocated GPU memory usage: " << 100 * (float)data->size / (float)(picAllocX * picAllocY * pics) << "[%] for: " << data->picsNo << " pictures" << endl;
+    cout << "CPU clocks ( data load to GPU ): " << float( clock() - t ) << endl;
+    cout << "allocated GPU memory usage: " << 100 * (float)data->size / (float)(picAllocX * picAllocY * pics) << "[%] for: " << data->picsNo << " from allocated " << pics << " pictures" << endl;
     freeGPU();
     freeSHM( data );
     cout << "========== END GPU ============" << endl << endl;
