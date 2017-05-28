@@ -20,11 +20,11 @@ __global__ void printKernel()
 {
     unsigned resNo = 10;
 	for ( unsigned i = 0; i < resNo; i++ )
-        printf( "x[%i]: %f\n", i, d_x[ i ] );
+        printf( "d_x[%i] + d_median[ 0 ]: %f\n", i, d_x[ i ] + d_median[ 0 ] );
     for ( unsigned i = 0; i < resNo; i++ )
         printf( "d_Xfp32[%i]: %.6f\n", i, d_Xfp32[ i ] );
 	for ( unsigned i = 0; i < resNo; i++ )
-        printf( "ix[%i]: %f\n", i, d_ix[ i ] );
+        printf( "d_ix[%i]: %f\n", i, d_ix[ i ] );
 }
 
 __global__ void idctKernelFloat()
@@ -71,6 +71,7 @@ int main( int argc, char* argv[] )
     inputVec[ 3 ] = 0.05f;
     vector < float > sortVec( inputVec ); sort( sortVec.begin(), sortVec.end() );
     float vecMedian = sortVec[ sortVec.size() / 2 ];
+    cout << "vector median: " << vecMedian << endl;
 	cudaMemcpyToSymbol( d_x, &inputVec[ 0 ], sizeof( float ) * ( unsigned )inputVec.size() );
     cudaMemcpyToSymbol( d_N, &N, sizeof( unsigned ) );
     cudaMemcpyToSymbol( d_median, &vecMedian, sizeof( float ) );

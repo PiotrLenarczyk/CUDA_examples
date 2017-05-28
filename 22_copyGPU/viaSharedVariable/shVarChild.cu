@@ -1,6 +1,3 @@
-/* 
- rm a.out aChild.out & make clean && qmake && make && /usr/local/cuda-8.0/bin/nvcc -arch=sm_XX shVarChild.cu -o aChild.out && clear && ./a.out
- */
 //STL
 #include <iostream>
 #include <stdlib.h>

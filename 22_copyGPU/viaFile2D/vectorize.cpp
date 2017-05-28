@@ -42,7 +42,6 @@ int main( void )
                                 65.738f * qRed( lineTmp[ x ] ) + 
                                 129.057f * qGreen( lineTmp[ x ] ) +
                                 25.064f * qBlue( lineTmp[ x ] ) ) );
-                
             }
         }
         imagesFile.write( reinterpret_cast< char* >( &imY[ 0 ] ), imY.size() * sizeof( float ) ); 

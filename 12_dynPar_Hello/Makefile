@@ -1,6 +1,6 @@
 # Build tools 
 FLAGS=-Wno-deprecated-gpu-targets -std=c++11
-DynParFLAGS = -arch=sm_35 -rdc=true 
+DynParFLAGS = -arch=sm_50 -rdc=true 
 NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
 NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 
@@ -18,4 +18,4 @@ clean:
 	rm dynPar.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

@@ -55,7 +55,7 @@ __global__ void populateMatsRowsColsKernel()
     matY = localInd / d_X;
     matX = localInd - matY * d_X;
     if ( ( matY >= d_Y )  || ( matX >= d_X ) )
-        return
+        return;
     d_vecDArray[ matZ ][ matY ][ matX ] = d_vecD_tmpTransfarray[ globalInd ];
 }
 

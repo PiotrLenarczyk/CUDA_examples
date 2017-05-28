@@ -9,9 +9,6 @@
 http://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
 */
 using namespace std;
-/*
-touch a.out && rm a.out && qmake && make && clear && gdb -ex run ./a.out
-*/
 
 unsigned i;
 

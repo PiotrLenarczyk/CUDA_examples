@@ -1,5 +1,5 @@
-#include "../book.h"
 #include <iostream>
+#include <stdio.h>
 
 using namespace std;
 
@@ -7,12 +7,12 @@ int main ( void )
 {
 	cudaDeviceProp prop;
 	int count;
-	HANDLE_ERROR( cudaGetDeviceCount( &count ) );
+	cudaGetDeviceCount( &count );
 	for ( int i = 0; i < count; i++ )
 	{
-		HANDLE_ERROR( cudaGetDeviceProperties( &prop, i ) );
+		cudaGetDeviceProperties( &prop, i );
 		printf( "=======================================================================================================\n" );
-                printf( "========= 7D GPU of 6D GX [ 4D BX; 5D BY; 6D BZ ] of 4D B [ 1D THX; 2D THY; 3D THZ ] ==================\n" );
+        printf( "========= 7D GPU of 6D GX [ 4D BX; 5D BY; 6D BZ ] of 4D B [ 1D THX; 2D THY; 3D THZ ] ==================\n" );
 		printf( "========= single Thread[] in 4D Block [ THX, THY, THZ ] acts as ALU ===================================\n" );                
 		printf( "=======================================================================================================\n" );                
 		printf( "Grid[ Blocks, Blocks, Blocks ] => gridKnot/kernel<<< Blocks, BlockThread >>>\n" );

@@ -22,5 +22,6 @@ int main( void )
     d_vec = vecStd;
     std::cout << "d_vec from vecStd :" << std::endl;
     thrust::copy( d_vec.begin(), d_vec.end(), std::ostream_iterator< float >( std::cout, "\n" ) );
+    
     return 0;
 }

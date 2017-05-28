@@ -16,4 +16,4 @@ clean:
 	rm thrustSort.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

@@ -19,4 +19,4 @@ clean:
 	rm integrals.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

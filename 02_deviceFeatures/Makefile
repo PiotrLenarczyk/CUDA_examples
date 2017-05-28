@@ -15,4 +15,4 @@ clean:
 	rm deviceFeatures.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

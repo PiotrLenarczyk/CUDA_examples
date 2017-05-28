@@ -1,4 +1,3 @@
-#include "../book.h"
 #include <iostream>
 #include <vector>
 #define N 60000
@@ -21,19 +20,19 @@ int main ( void )
 
 	//GPU memory allocation
     float *dev_a, *dev_b, *dev_c;
-	HANDLE_ERROR( cudaMalloc( ( void** )&dev_a, N * sizeof( float ) ) );
-	HANDLE_ERROR( cudaMalloc( ( void** )&dev_b, N * sizeof( float ) ) );
-	HANDLE_ERROR( cudaMalloc( ( void** )&dev_c, N * sizeof( float ) ) );
+	cudaMalloc( ( void** )&dev_a, N * sizeof( float ) );
+	cudaMalloc( ( void** )&dev_b, N * sizeof( float ) );
+	cudaMalloc( ( void** )&dev_c, N * sizeof( float ) );
 	
 	//copy / download data in direction HostToDevice
-	HANDLE_ERROR( cudaMemcpy( dev_a, &firstVec[0], N * sizeof( float ), cudaMemcpyHostToDevice ) );
-	HANDLE_ERROR( cudaMemcpy( dev_b, &secondVec[0], N * sizeof( float ), cudaMemcpyHostToDevice ) );
+	cudaMemcpy( dev_a, &firstVec[0], N * sizeof( float ), cudaMemcpyHostToDevice );
+	cudaMemcpy( dev_b, &secondVec[0], N * sizeof( float ), cudaMemcpyHostToDevice );
     
 	//calculate vectors sum, using Blocks
 	add<<<N,1>>> ( dev_a, dev_b, dev_c );
 	
 	//copy / upload results data c[] in direction DeviceToHost
-	HANDLE_ERROR( cudaMemcpy( &resultsVec[0], dev_c, N * sizeof( float ), cudaMemcpyDeviceToHost ) );
+	cudaMemcpy( &resultsVec[0], dev_c, N * sizeof( float ), cudaMemcpyDeviceToHost );
 
 	//show results
     for ( int i = 0; i < 5; i++ ) 

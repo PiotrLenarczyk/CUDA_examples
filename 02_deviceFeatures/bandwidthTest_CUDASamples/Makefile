@@ -34,7 +34,7 @@
 ################################################################################
 
 # Location of the CUDA Toolkit
-CUDA_PATH ?= "/usr"
+CUDA_PATH ?= "/usr/local/cuda-8.0"
 
 ##############################
 # start deprecated interface #
@@ -204,8 +204,7 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(LDFLAGS))
 ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
-# INCLUDES  := -I$(CUDA_PATH)/samples/common/inc/
-INCLUDES  := -I/home/lenarczp/Dokumenty/programowanieGitHub/z_cuda_examplesDuyNguyen/common/inc/
+INCLUDES  := -I$(CUDA_PATH)/samples/common/inc/
 LIBRARIES :=
 
 ################################################################################

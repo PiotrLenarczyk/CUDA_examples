@@ -1,7 +1,5 @@
 //STL
 #include <stdio.h>
-//CUDA
-//#include "../book.h"
 
 __global__ void childKernel()
 {

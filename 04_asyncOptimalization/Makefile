@@ -16,4 +16,4 @@ clean:
 	rm asyncOpto.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

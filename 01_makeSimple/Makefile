@@ -1,5 +1,5 @@
 # Build tools g++-5 or g++-6
-CXX = g++-5
+CXX = g++
 NVCC = `find /usr -name 'nvcc'` -Wno-deprecated-gpu-targets 
 
 # here are all the objects
@@ -8,7 +8,7 @@ OBJS = cppexample.o
 
 # make and compile
 a.out: $(OBJS) $(GPUOBJS)
-	$(NVCC) -o a.out $(OBJS) $(GPUOBJS) 
+	$(NVCC) -o a.out $(OBJS) $(GPUOBJS)
 
 cuexample.o: cuexample.cu
 	$(NVCC) -c cuexample.cu
@@ -20,4 +20,4 @@ clean:
 	rm cppexample.o cuexample.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out

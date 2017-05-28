@@ -4,9 +4,6 @@
 #include <thread>
 #include <time.h>
 
-//CUDA
-#include "../book.h"
-
 using namespace std;
 
 ////////////////////////////////////////// HOST //////////////////////////////////////////////////////
@@ -37,9 +34,9 @@ vector < float > wynikGPU( N, 0 );
     void memInit()
     {
             //GPU memory allocation
-            HANDLE_ERROR( cudaMalloc( ( void** )&dev_a1, typeSize ) );
-            HANDLE_ERROR( cudaMalloc( ( void** )&dev_b1, typeSize ) );
-            HANDLE_ERROR( cudaMalloc( ( void** )&dev_c1, typeSize ) );
+            cudaMalloc( ( void** )&dev_a1, typeSize );
+            cudaMalloc( ( void** )&dev_b1, typeSize );
+            cudaMalloc( ( void** )&dev_c1, typeSize );
     }
     
     void memFree()
@@ -56,12 +53,12 @@ vector < float > wynikGPU( N, 0 );
         {
             const int nThreads = 1024;            
             //copy / download data in direction HostToDevice
-            HANDLE_ERROR( cudaMemcpyAsync( dev_a1, &firstMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice ) );
-            HANDLE_ERROR( cudaMemcpyAsync( dev_b1, &secondVectorMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice ) );
+            cudaMemcpyAsync( dev_a1, &firstMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice );
+            cudaMemcpyAsync( dev_b1, &secondVectorMatrix[ *( int * ) iter  ][ 0 ], typeSize, cudaMemcpyHostToDevice );
             //calculate vectors sum, using max. number of possible 1D Threads per Block
             add<<< ( N + nThreads - 1 ) / nThreads, nThreads >>> ( dev_a1, dev_b1, dev_c1, N );
             //copy / upload results data c[] in direction DeviceToHost
-            HANDLE_ERROR( cudaMemcpyAsync( &resultsGPUMatrix[ *( int * ) iter  ][ 0 ], dev_c1, typeSize, cudaMemcpyDeviceToHost ) );
+            cudaMemcpyAsync( &resultsGPUMatrix[ *( int * ) iter  ][ 0 ], dev_c1, typeSize, cudaMemcpyDeviceToHost );
         }
     }
     

@@ -6,7 +6,7 @@
 #include <thrust/reduce.h>              //sum array reduce
 #include <thrust/sequence.h>            //used in reduce
 #include <thrust/execution_policy.h>    //library dependency
-#include <device_ptr.h>                 //thrust device_vector to array
+#include "device_ptr.h"                 //thrust device_vector to array
 
 using namespace thrust;             //note that default is THRUST!!!
 

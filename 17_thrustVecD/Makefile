@@ -2,8 +2,7 @@
 FLAGS=-Wno-deprecated-gpu-targets -std=c++11
 DynParFLAGS = -arch=sm_35 -rdc=true 
 NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
-#NVCC = `find /usr -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
-NVCC = /usr/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS)
+NVCC = `find /usr/local -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 
 # here are all the objects
 GPUOBJS = vecD.o 
@@ -19,4 +18,4 @@ clean:
 	rm vecD.o
 
 delete:
-	rm a.out
+	touch a.out && rm a.out
