@@ -1,5 +1,6 @@
 #include "shMem.h"
 #include <time.h>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -57,8 +58,20 @@ int main( void )
 {
     int shmid = shmget( key, sizeof( Arrays ), 0666 ); if ( shmid < 0 ) { cerr << "shmget ERROR!\n"; return -1; }
     struct Arrays* someData = ( struct Arrays* )  shmat( shmid, NULL, 0 );
-    someData->isBeingWritten = true;
-    
+    if ( someData->isBeingWritten == true ) 
+	{ 
+		while ( someData->isBeingWritten ) 
+		{
+			cout << "shared memory struct is busy!\n" << endl; 
+			if ( system( "sleep 0.1" ) )			 
+			{
+				cerr << "sleep error!\n"; 
+				return -1; 
+			}
+		}
+	}
+	someData->isBeingWritten = true;
+
 	clock_t t = clock();
 	if ( cudaMemcpyToSymbolAsync( d_arr1Size, &array1Size, sizeof( unsigned ) ) != cudaSuccess ) { cerr << "array1Size GPU copy error!\n"; freeGPU(); return -1; }
     if ( cudaMemcpyToSymbolAsync( d_arr1, &someData->array1[ 0 ], sizeof( float ) * array1Size ) != cudaSuccess ) { cerr << "array1 GPU copy error!\n"; freeGPU(); return -1; }
