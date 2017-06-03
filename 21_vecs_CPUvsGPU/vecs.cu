@@ -11,7 +11,7 @@
 //h_CPU namespace
 using namespace std;
 //h_CPU global constants
-const unsigned arrSize = 0102400000; 
+const unsigned arrSize = 01024000000; 
 vector< float > h_arr ( arrSize );
 unsigned i;
 clock_t t;
@@ -29,7 +29,7 @@ int main()
 {
     for ( i = 0; i < arrSize; i++ )
         h_arr[ i ] = 1.0f;   
-    for( unsigned test = 0; test < 10; test++ )
+    for( unsigned test = 0; test < 1; test++ )
     {
         t = clock();
         float floatCPUResult = floatArrSum( h_arr );
