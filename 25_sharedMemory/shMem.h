@@ -10,6 +10,7 @@ const unsigned array2Size = 15;
 
 struct Arrays //only float array
 {
+    bool isBeingWritten = false;
 	unsigned shmid; 
     float array1 [ array1Size ];
     float array2 [ array2Size ];

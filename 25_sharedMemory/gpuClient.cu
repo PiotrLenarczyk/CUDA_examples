@@ -5,14 +5,24 @@ using namespace std;
 
 //HOST
 unsigned i = 0;
+int freeShMem( struct Arrays *data )
+{
+    data->isBeingWritten = false;
+    if ( shmdt( data ) < 0 )
+    {
+        cerr << "child shmdt ERROR!\n";
+        return -1;
+    }
+    return 0;
+}
 
-int freeShMem( int &shmid )  /* destroy used shared memory (important!!!) */
+int destroyShMem( int &shmid )  /* destroy used shared memory (important!!!) */
 {
     if ( shmctl( shmid, IPC_RMID, NULL ) < 0 )
     {
         cerr << "shmctl ERROR!\n";
         return -1;
-    } 
+    }
     return 0;
 }
 
@@ -47,6 +57,8 @@ int main( void )
 {
     int shmid = shmget( key, sizeof( Arrays ), 0666 ); if ( shmid < 0 ) { cerr << "shmget ERROR!\n"; return -1; }
     struct Arrays* someData = ( struct Arrays* )  shmat( shmid, NULL, 0 );
+    someData->isBeingWritten = true;
+    
 	clock_t t = clock();
 	if ( cudaMemcpyToSymbolAsync( d_arr1Size, &array1Size, sizeof( unsigned ) ) != cudaSuccess ) { cerr << "array1Size GPU copy error!\n"; freeGPU(); return -1; }
     if ( cudaMemcpyToSymbolAsync( d_arr1, &someData->array1[ 0 ], sizeof( float ) * array1Size ) != cudaSuccess ) { cerr << "array1 GPU copy error!\n"; freeGPU(); return -1; }
@@ -56,8 +68,9 @@ int main( void )
 	t = clock() - t; cout << "GPU H2D copy: " << t << " [CPU clocks]/" << CLOCKS_PER_SEC << " = " << float( t ) / CLOCKS_PER_SEC << "[ us ]" << endl;
     printArr2<<< 1, 1 >>>();
 
-    if ( freeShMem( shmid ) != 0 )  { cerr << "Shared Memory free error!\n"; freeGPU(); return -1; }
-    freeGPU();
+    if ( freeShMem( someData ) != 0 )  { cerr << "Shared Memory free error!\n"; freeGPU(); return -1; }
+	if ( destroyShMem( shmid ) != 0 )  { cerr << "Shared Memory free error!\n"; freeGPU(); return -1; }
+	freeGPU();
     return 0;
 }
 
