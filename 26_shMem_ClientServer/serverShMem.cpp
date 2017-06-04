@@ -1,11 +1,27 @@
 #include "shMem.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 using namespace std;
 
 unsigned i = 0;
 
-int main( void )
+void someFunction( int );
+void error(const char *msg)
+{
+    perror(msg);
+    exit(1);
+}
+
+
+int main( int argc, char *argv[] )
 {    
+//======== RESERVE SHARED MEMORY
 	/* obtain shared memory container */
     int shmid = shmget( key, sizeof( Arrays ), IPC_CREAT | 0666 ); if ( shmid < 0 ) 
 		{ cerr << "shmget ERROR!\n"; return -1; }
@@ -19,6 +35,58 @@ int main( void )
         someData->array2[ i ] = i + 0.23f;
     //there must be a client program!
     
+//======= INITALIZE MULTIPLE CLIENTS SERVER
+    int sockfd, newsockfd, portno, pid;
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+
+    if (argc < 2) {
+        fprintf(stderr,"ERROR, no port provided\n");
+        exit(1);
+    }
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    portno = atoi(argv[1]);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(portno);
+    if (bind(sockfd, (struct sockaddr *) &serv_addr,
+            sizeof(serv_addr)) < 0) 
+            error("ERROR on binding");
+    listen(sockfd,5);
+    clilen = sizeof(cli_addr);
+    while (1) {
+        newsockfd = accept(sockfd, 
+            (struct sockaddr *) &cli_addr, &clilen);
+        if (newsockfd < 0) 
+            error("ERROR on accept");
+        pid = fork();
+        if (pid < 0)
+            error("ERROR on fork");
+        if (pid == 0)  {
+            close(sockfd);
+            someFunction(newsockfd);
+            exit(0);
+        }
+        else close(newsockfd);
+    } /* end of while */
+    close(sockfd);
+        
     return 0;
+}
+
+void someFunction (int sock)
+{
+   int n;
+   char buffer[4];
+      //datatype, length, data[]
+   bzero(buffer,4);
+   n = read(sock,buffer,3);
+   if (n < 0) error("ERROR reading from socket");
+    printf("Here is the float[0]: %f\n",atof(buffer));
+   n = write(sock,"I got your message",18);
+   if (n < 0) error("ERROR writing to socket");
 }
 

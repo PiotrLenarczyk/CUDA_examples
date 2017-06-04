@@ -6,6 +6,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <iostream>
+
+using std::cin;
 
 void error(const char *msg)
 {
@@ -19,7 +22,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
-    char buffer[256];
+    float buffer[4];
     if (argc < 3) {
        fprintf(stderr,"usage %s hostname port\n", argv[0]);
        exit(0);
@@ -42,16 +45,23 @@ int main(int argc, char *argv[])
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
     printf("Please enter the message: ");
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
-    n = write(sockfd,buffer,strlen(buffer));
+    bzero(buffer,4);
+//     fgets(buffer,4,stdin);
+    cin >> buffer[ 0 ];
+    for ( unsigned i = 0 ;i < 4; i++ )
+        printf( "entered [%i]: %f\n ", i, buffer[i] );
+//     n = write(sockfd,buffer,strlen(buffer));
+    char tmpbuff[4];
+    int ret = snprintf( tmpbuff, sizeof( tmpbuff ), "%f", buffer[ 0 ] );
+    n = write(sockfd,tmpbuff,4);
     if (n < 0) 
          error("ERROR writing to socket");
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
+    char bufferOut[ 255 ];
+    bzero(bufferOut,255);
+    n = read(sockfd,bufferOut,255);
     if (n < 0) 
          error("ERROR reading from socket");
-    printf("%s\n",buffer);
+    printf("%s\n",bufferOut);
     close(sockfd);
     return 0;
 }
