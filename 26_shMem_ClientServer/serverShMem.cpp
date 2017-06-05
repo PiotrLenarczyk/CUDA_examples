@@ -1,4 +1,3 @@
-#include "shMem.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -6,18 +5,19 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "shMem.h"
 
 using namespace std;
 
 unsigned i = 0;
 
-void someFunction( int );
-void error(const char *msg)
+void receiveFloat( int &sock, unsigned &no );
+void receiveStruct( int &sock );
+void error( const char *msg )
 {
-    perror(msg);
-    exit(1);
+    perror( msg );
+    exit( 1 );
 }
-
 
 int main( int argc, char *argv[] )
 {    
@@ -40,75 +40,89 @@ int main( int argc, char *argv[] )
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
-    if (argc < 2) {
-        fprintf(stderr,"ERROR, no port provided\n");
-        exit(1);
+    if ( argc < 2 ) {
+        fprintf( stderr,"ERROR, no port provided\n" );
+        exit( 1 );
     }
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = atoi(argv[1]);
+    sockfd = socket( AF_INET, SOCK_STREAM, 0 );
+    if ( sockfd < 0 ) 
+        error( "ERROR opening socket" );
+    bzero( ( char * ) &serv_addr, sizeof( serv_addr ) );
+    portno = atoi( argv[ 1 ] );
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
-    if (bind(sockfd, (struct sockaddr *) &serv_addr,
-            sizeof(serv_addr)) < 0) 
-            error("ERROR on binding");
-    listen(sockfd,5);
-    clilen = sizeof(cli_addr);
-    while (1) {
-        newsockfd = accept(sockfd, 
-            (struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd < 0) 
-            error("ERROR on accept");
+    serv_addr.sin_port = htons( portno );
+    if ( bind( sockfd, ( struct sockaddr * ) &serv_addr,
+            sizeof( serv_addr ) ) < 0 ) 
+            error( "ERROR on binding" );
+    listen( sockfd, 5 );
+    clilen = sizeof( cli_addr );
+    while ( 1 ) 
+    {
+        newsockfd = accept( sockfd, 
+            ( struct sockaddr * ) &cli_addr, &clilen );
+        if ( newsockfd < 0 ) 
+            error( "ERROR on accept" );
         pid = fork();
-        if (pid < 0)
-            error("ERROR on fork");
-        if (pid == 0)  {
-            close(sockfd);
-            someFunction(newsockfd);
-            exit(0);
+        if ( pid < 0 )
+            error( "ERROR on fork" );
+        if ( pid == 0 )  
+        {
+            close( sockfd );
+//             unsigned noFloats = 4; receiveFloat( newsockfd, noFloats );
+            receiveStruct( newsockfd );
+            exit( 0 );
         }
-        else close(newsockfd);
+        else close( newsockfd );
     } /* end of while */
-    close(sockfd);
+    close( sockfd ); 
         
     return 0;
 }
 
-// void someFunction (int sock)
-// {
-//     int n;
-//     float floatsIn[ 4 ];
-//     for ( unsigned i = 0; i < 4; i++ )
-//         floatsIn[ i ] = 0.0f;
-//     n = read( sock, floatsIn, 3 );
-//     if ( n < 0 ) error( "ERROR reading from socket" );
-//     for ( unsigned i = 0; i < 4; i++ )
-//         printf( "Here is the float[ %i ]: %f\n", i, floatsIn[ i ] );
-//     n = write( sock, "I got your message", 18 );
-//     if ( n < 0 ) error( "ERROR writing to socket" );
-// }
-
-
-void someFunction (int sock)
+void receiveStruct( int &sock )
 {
-    int n; unsigned no = 4;
-    unsigned buffSize = no * sizeof( float );
-    unsigned char buffer[ buffSize ];
-        //datatype, length, data[]
-    for ( unsigned i = 0; i < buffSize; i++ )
-        buffer[ i ] = ' ';
-    n = read( sock, buffer, buffSize - 1 );   if ( n < 0 ) error( "ERROR reading from socket" );
+    Arrays ArrIn;
+    unsigned buffSize = sizeof( ArrIn );    //+1 bigger
+    unsigned char buffStruct[ buffSize ];
+    int n = read( sock, buffStruct, buffSize );   
+    if ( n < 0 )
+        error( "ERROR reading from socket" );
     cout << "bufferIn: [";
+    for ( unsigned j = 0; j < sizeof( ArrIn ); j++ )
+        cout << buffStruct[ j ];
+    cout << "]" << endl;
+    
+    memcpy( &ArrIn, buffStruct, sizeof( ArrIn ) );
+    cout << "ArrIn.isBeingWritten: [" << unsigned( ArrIn.isBeingWritten ) << "]" << endl;
+    cout << "ArrIn.shmid: [" << ArrIn.shmid << "]" << endl;
+    for ( unsigned i = 0; i < array1Size; i++ )
+        cout << "ArrIn.array1[ " << i << " ]: [" << ArrIn.array1[ i ] << "]" << endl;
+    for ( unsigned i = 0; i < array2Size; i++ )
+        cout << "ArrIn.array2[ " << i << " ]: [" << ArrIn.array2[ i ] << "]" << endl;
+    n = write( sock, "I got your message", 18 );
+    if ( n < 0 ) 
+        error( "ERROR writing to socket" );
+}
+
+void receiveFloat( int &sock, unsigned &no )
+{
+    int n;
+    unsigned buffSize = ( no + 1 ) * sizeof( float );
+    unsigned char bufferFloat[ buffSize ];
+    for ( unsigned i = 0; i < buffSize; i++ )
+        bufferFloat[ i ] = ' ';
+    n = read( sock, bufferFloat, buffSize - 1 );   
+    if ( n < 0 ) 
+        error( "ERROR reading from socket" );
+    cout << "bufferFloatsIn: [";
     for ( unsigned j = 0; j < buffSize; j++ )
-        cout << buffer[ j ];
+        cout << bufferFloat[ j ];
     cout << "]" << endl;
     float floatsIn[ no ];
     for ( unsigned i = 0; i < no; i++ )
     {
-        memcpy( ( unsigned char* )( &floatsIn[ i ] ),  &buffer[ i * sizeof( float ) ], sizeof( float ) );
+        memcpy( ( unsigned char* )( &floatsIn[ i ] ),  &bufferFloat[ i * sizeof( float ) ], sizeof( float ) );
     }
     for ( unsigned i = 0; i < no; i++ )
         printf( "floatsIn[ %i ]: %f\n", i, floatsIn[ i ] );
@@ -116,16 +130,4 @@ void someFunction (int sock)
     if ( n < 0 ) error( "ERROR writing to socket" );
 }
 
-// void someFunction (int sock)
-// {
-//    int n;
-//    char buffer[4];
-//       //datatype, length, data[]
-//    bzero(buffer,4);
-//    n = read(sock,buffer,3);
-//    if (n < 0) error("ERROR reading from socket");
-//     printf("Here is the float[0]: %f\n",atof(buffer));
-//    n = write(sock,"I got your message",18);
-//    if (n < 0) error("ERROR writing to socket");
-// }
 
