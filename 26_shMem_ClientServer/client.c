@@ -8,8 +8,7 @@
 #include <netdb.h> 
 #include <iostream>
 
-using std::cin;
-
+using namespace std;
 void error(const char *msg)
 {
     perror(msg);
@@ -22,7 +21,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
-    float buffer[4];
     if (argc < 3) {
        fprintf(stderr,"usage %s hostname port\n", argv[0]);
        exit(0);
@@ -44,16 +42,30 @@ int main(int argc, char *argv[])
     serv_addr.sin_port = htons(portno);
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
-    printf("Please enter the message: ");
-    bzero(buffer,4);
-//     fgets(buffer,4,stdin);
-    cin >> buffer[ 0 ];
+    printf("Please enter the message: \n");
+    float floatsOut[4];
+    cin >> floatsOut[ 0 ];
+    for ( unsigned i = 1; i < 4; i++ )
+    {
+        floatsOut[ i ] = i + 0.04f;
+        cout << "floatsOut[" << i <<"]: " << floatsOut[ i ] << endl;
+    }
     for ( unsigned i = 0 ;i < 4; i++ )
-        printf( "entered [%i]: %f\n ", i, buffer[i] );
-//     n = write(sockfd,buffer,strlen(buffer));
-    char tmpbuff[4];
-    int ret = snprintf( tmpbuff, sizeof( tmpbuff ), "%f", buffer[ 0 ] );
-    n = write(sockfd,tmpbuff,4);
+        printf( "entered [%i]: %f\n ", i, floatsOut[i] );
+    unsigned chBuffSize =  4 * si3zeof( float );
+    unsigned char chFloats[ chBuffSize ];
+    for ( unsigned i = 0; i < 4; i++ )
+        memcpy( &chFloats[ i * sizeof( float ) ], ( unsigned char* )( &floatsOut[ i ] ), sizeof( float ) );
+    cout << "bufferOut: [";
+    for ( unsigned i = 0; i < chBuffSize; i++ )
+         cout << chFloats[ i ];
+    cout << "]" << endl;
+    n = write(sockfd,chFloats,chBuffSize);
+//     n = write(sockfd,floatsOut,4);
+
+//     char tmpbuff[4];
+//     int ret = snprintf( tmpbuff, sizeof( tmpbuff ), "%f", floatsOut[ 0 ] );
+//     n = write(sockfd,tmpbuff,4);
     if (n < 0) 
          error("ERROR writing to socket");
     char bufferOut[ 255 ];

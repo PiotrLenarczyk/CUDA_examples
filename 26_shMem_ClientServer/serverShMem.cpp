@@ -77,16 +77,55 @@ int main( int argc, char *argv[] )
     return 0;
 }
 
+// void someFunction (int sock)
+// {
+//     int n;
+//     float floatsIn[ 4 ];
+//     for ( unsigned i = 0; i < 4; i++ )
+//         floatsIn[ i ] = 0.0f;
+//     n = read( sock, floatsIn, 3 );
+//     if ( n < 0 ) error( "ERROR reading from socket" );
+//     for ( unsigned i = 0; i < 4; i++ )
+//         printf( "Here is the float[ %i ]: %f\n", i, floatsIn[ i ] );
+//     n = write( sock, "I got your message", 18 );
+//     if ( n < 0 ) error( "ERROR writing to socket" );
+// }
+
+
 void someFunction (int sock)
 {
-   int n;
-   char buffer[4];
-      //datatype, length, data[]
-   bzero(buffer,4);
-   n = read(sock,buffer,3);
-   if (n < 0) error("ERROR reading from socket");
-    printf("Here is the float[0]: %f\n",atof(buffer));
-   n = write(sock,"I got your message",18);
-   if (n < 0) error("ERROR writing to socket");
+    int n; unsigned no = 4;
+    unsigned buffSize = no * sizeof( float );
+    unsigned char buffer[ buffSize ];
+        //datatype, length, data[]
+    for ( unsigned i = 0; i < buffSize; i++ )
+        buffer[ i ] = ' ';
+    n = read( sock, buffer, buffSize - 1 );   if ( n < 0 ) error( "ERROR reading from socket" );
+    cout << "bufferIn: [";
+    for ( unsigned j = 0; j < buffSize; j++ )
+        cout << buffer[ j ];
+    cout << "]" << endl;
+    float floatsIn[ no ];
+    for ( unsigned i = 0; i < no; i++ )
+    {
+        memcpy( ( unsigned char* )( &floatsIn[ i ] ),  &buffer[ i * sizeof( float ) ], sizeof( float ) );
+    }
+    for ( unsigned i = 0; i < no; i++ )
+        printf( "floatsIn[ %i ]: %f\n", i, floatsIn[ i ] );
+    n = write( sock, "I got your message", 18 );
+    if ( n < 0 ) error( "ERROR writing to socket" );
 }
+
+// void someFunction (int sock)
+// {
+//    int n;
+//    char buffer[4];
+//       //datatype, length, data[]
+//    bzero(buffer,4);
+//    n = read(sock,buffer,3);
+//    if (n < 0) error("ERROR reading from socket");
+//     printf("Here is the float[0]: %f\n",atof(buffer));
+//    n = write(sock,"I got your message",18);
+//    if (n < 0) error("ERROR writing to socket");
+// }
 
