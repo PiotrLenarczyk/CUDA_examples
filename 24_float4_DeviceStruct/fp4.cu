@@ -2,7 +2,6 @@
 #include <iostream>
 #include <thrust/execution_policy.h>
 #include <thrust/sort.h>
-#include <thrust/device_ptr.h>
 
 using namespace std;
 
