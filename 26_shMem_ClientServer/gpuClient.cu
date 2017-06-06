@@ -16,6 +16,17 @@ int destroyShMem( int shmid );
 void sendStruct( struct Arrays &Arr, int argc, char *argv[] );
 void error( const char *msg );
 
+//GPU variables:
+__device__ float d_array1[ array1Size ];
+__device__ float d_array2[ array2Size ];
+void freeGPU()
+{
+    cudaFree( d_array1 );
+    cudaFree( d_array2 );
+    cudaDeviceSynchronize();
+    cudaDeviceReset();
+}
+
 int main( int argc, char *argv[] )
 {
     //=============================================    
@@ -28,6 +39,7 @@ int main( int argc, char *argv[] )
 //  if all local client-operations where performed destroy shared memory
     if ( destroyShMem( someData->shmid ) != 0 ) { cerr << "shared memory destroy problem!\n"; return -1; }
     
+    freeGPU();
     return 0;
 }
 
