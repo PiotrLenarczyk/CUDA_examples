@@ -96,5 +96,5 @@ __global__ void recalcMedian( struct d_fpMedian *d_fpm ) //only on device callab
     printf( "d_f[%i]: %f\n", ind, d_f[ ind ] );
     d_fpm[ 0 ].med[ 0 ] += median;
     if ( ind == 0 ) printf( "recalculated struct with its median value: %f\n", median );
-    d_fpm[ 0 ].f[ ind ] = d_fpm[ 0 ].f[ ind ] / median;    
+    d_fpm[ 0 ].f[ ind ] = d_fpm[ 0 ].f[ ind ] - median;    
 }
