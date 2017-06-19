@@ -28,7 +28,7 @@ void freeGPU()
 }
 
 int main( int argc, char *argv[] )
-{
+{   cudaDeviceReset();
     //=============================================    
     struct Arrays* someData = shMemClient();
 //  compute stuff on client GPU...
