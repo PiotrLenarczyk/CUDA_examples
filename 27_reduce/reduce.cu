@@ -24,7 +24,7 @@ void freeGpu()
     cudaFree( d_o );
     cudaDeviceReset();
 }
-__global__ void reduction( float *d_in, float *d_out )
+__global__ void reduction( float *d_in, float *d_out )  //reduction is performed in stream-based manner as CPU coprocessor
 {
     unsigned tid = threadIdx.x;
     unsigned idx = blockIdx.x * blockDim.x * unRoll + threadIdx.x;
@@ -92,7 +92,7 @@ int main( void )
     tDif -= std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count();
     std::cout << "reduction of float array[" << N << "] took " << tDif << " [ns]\n";
     
-    cudaMemcpyFromSymbolAsync( &vec[ 0 ], d_o, sizeof( float ) * N );
+    cudaMemcpyFromSymbolAsync( &vec[ 0 ], d_o, sizeof( float ) * ( nBlocks / 8 ) );
     double gpu_sum = 0;
     for ( i = 0; i < nBlocks / 8; i++ ) 
         gpu_sum += vec[ i ];
