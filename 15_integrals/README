@@ -1,0 +1,3 @@
+Program presents academic:
+// http://csweb.cs.wfu.edu/bigiron/LittleFE-CUDA-TrapezoidalRule/build/html/cudaAlg.html
+calculation of integrals in CUDA C.

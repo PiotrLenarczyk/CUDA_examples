@@ -45,7 +45,7 @@ int main( int argc, char *argv[] )
     d_vecD[ 0 ][ 1 ] = 11.1f;
     cout << "d_vecD[ 0 ][ 1 ]: " << d_vecD[ 0 ][ 1 ] << endl;
     cout << "d_vecD_Row[0].size(): " << int( device_vector< float >( d_vecD[ 0 ] ).size() ) << endl;
-//  P.S. note rare sparse matrices processing - or buy ArrayFire
+//  P.S. note rare sparse matrices processing
     
 ////    THRUST vecD example
     int timeROWY = 2;
@@ -58,7 +58,6 @@ int main( int argc, char *argv[] )
     d_vecTimeD[ 0 ][ 0 ][ 1 ] = 11.1f;
     cout << "d_vecTimeD[ zeroTime ][ 0 ][ 1 ]: " << d_vecTimeD[ 0 ][ 0 ][ 1 ] << endl;
     cout << "d_vecTimeD_time[0]_Row[0].size(): " << int( device_vector< float >( d_vecTimeD[ 0 ][ 0 ] ).size() ) << endl;
-//  P.S. note quite similar dimensional dependencies to ordinary digital movie ( as 3D signal )
     
 	return 0;
 }

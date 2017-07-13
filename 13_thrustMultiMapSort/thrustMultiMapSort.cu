@@ -27,7 +27,6 @@ int main( int argc, char *argv[] )
     }
     printf( "N = %ld\n", N );
     tuple< float, float, float, float > tuple4D( 10.1f, 75.0f, 11.1f, 1.1f ); //4D point tuple
-    //one can visualise as POINTSCLOUD MOVIE = single 4D point
     cout << "tuple4D[ 1 ]: " << get< 1 >( tuple4D ) << endl;
     
     //tuple pointer iterator - zip:
