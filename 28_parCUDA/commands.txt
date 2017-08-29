@@ -1,0 +1,4 @@
+./a.out 0
+./a.out 1
+./a.out 2
+./a.out 3
