@@ -8,3 +8,6 @@ echo "NOTE P.S.: Rubik's Cube for single element 7D model of 6D space - each reg
 echo ""; echo "CUDA samples bandwidthTest:"; 
 echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
 ./bandwidthTest_CUDASamples/bandwidthTest
+
+rm a.out bandwidthTest_CUDASamples/bandwidthTest bandwidthTest_CUDASamples/bandwidthTest.o
+
