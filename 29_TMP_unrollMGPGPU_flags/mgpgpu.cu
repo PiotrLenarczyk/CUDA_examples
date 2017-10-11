@@ -1,47 +1,67 @@
 #include <iostream>
+#include <chrono>
 
 using namespace std;
 
 //CPU
 typedef unsigned int uint;
 int i = 0;
+int gpuCount = 0;
 //GPU
 cudaDeviceProp gpuProperties;
 const uint N = 1E8;
-const uint nThreads = 512;
-const uint nBlocks = ( N / nThreads ) + 1;
 const uint unrolling = 32;
-__device__ float d_f[ N ]; 
 __global__ void loop();
 __global__ void unrollLoop();
-void freeGPU()
+
+//auto t1 = std::chrono::high_resolution_clock::now(); //highest possible standard chronometrics
+//cout << "int took " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << endl;
+void initalizeHost( float * const ip, int const  size )
 {
-    cudaFree( d_f );
-    cudaDeviceReset();
+    for ( size_t i = 0; i < size; i++ )
+        ip[i] = 0.0f;
 }
 
 int main( void )
 {
-    int gpuCount = 0;
     cudaGetDeviceCount( &gpuCount );
+    //HOST
+    float *h_arr[ gpuCount ];
+    uint perDevN = 1E8 / gpuCount;
+    //DEVICE
+    cudaStream_t stream[ gpuCount ];
+    float *d_arr[ gpuCount ];
+    //alocate H,D memories
     for ( i = 0; i < gpuCount; i++ )
     {
+        //HOST 
+        cudaMallocHost( ( void** ) &h_arr[ i ], perDevN );
+        //DEVICE
         cudaSetDevice( i );
         cudaGetDeviceProperties( &gpuProperties, i );
         cout << gpuProperties.name << ": " << endl;
-        loop<<< 1, 1 >>>();
+        cudaMalloc( ( void** ) &d_arr, perDevN );
+        cudaStreamCreate( &stream[ i ] );
     }
-    
-    
-    freeGPU();
-    return 0;
-}
-
-__global__ void loop()
-{
-    uint iter = 0;
-    for ( iter = 0; iter < N; iter++ )
+    //initalize data
+    for ( i = 0; i < gpuCount; i++ )
     {
-        d_f[ iter ] = 0.0f;
+        initalizeHost( h_arr[ i ], perDevN );
+        cudaSetDevice( i );
+        
     }
+    
+    //free memory
+    for ( i = 0; i < gpuCount; i++ )
+    {
+        //HOST 
+        cudaFreeHost( h_arr[ i ] );
+        //DEVICE
+        cudaSetDevice( i );
+        cudaFree( d_arr[ i ] );
+        cudaStreamDestroy( stream[ i ] );
+    }
+
+    cudaDeviceReset();
+    return 0;
 }
