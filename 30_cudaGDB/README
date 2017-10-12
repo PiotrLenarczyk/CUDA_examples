@@ -1,0 +1,9 @@
+To enable CUDA debuging feature:
+1)compile NVCC with flag
+    #`find /usr/local -name 'nvcc' -print -quit` -g fileName.cuda -o a.out
+2)run cuda-gdb
+    #`find /usr/local -name 'cuda-gdb' -print -quit` a.out
+    in gdb mode run execution file:
+    #r
+    check execution backtrace ( stack-current function pointer entry error ):
+    #bt

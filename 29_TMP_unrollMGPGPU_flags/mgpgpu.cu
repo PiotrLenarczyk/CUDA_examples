@@ -5,53 +5,96 @@ using namespace std;
 
 //CPU
 typedef unsigned int uint;
-int i = 0;
+uint i = 0;
 int gpuCount = 0;
+void initalizeHost( float *ip, uint size );
+
 //GPU
 cudaDeviceProp gpuProperties;
-const uint N = 1E8;
-const uint unrolling = 32;
-__global__ void loop();
-__global__ void unrollLoop();
-
-//auto t1 = std::chrono::high_resolution_clock::now(); //highest possible standard chronometrics
-//cout << "int took " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << endl;
-void initalizeHost( float * const ip, int const  size )
+const uint N = 1E7;
+const uint nThreads = 512;
+const uint nBlocks = ( N / nThreads ) + 1;
+const uint UNROLLING = 16;                   //check [ 8 16 32 64 ]; I would guess sixteen times unrolling;
+__global__ void nop(){}; 
+#define cudaMemcpyHostToDevice H2D;          //useful alias
+#define cudaMemcpyDeviceToHost D2H;
+__global__ void trivialLoop()
 {
-    for ( size_t i = 0; i < size; i++ )
-        ip[i] = 0.0f;
+    uint a = 0;
+    for ( uint32_t i = 0; i < N; i++ )
+        a = i;
 }
+
+__global__ void unrollTrivialLoop()
+{
+    uint a = 0;
+    #pragma unroll UNROLLING                //briliant feature
+    for ( uint32_t i = 0; i < N; i++ )
+        a = i;
+};
 
 int main( void )
 {
     cudaGetDeviceCount( &gpuCount );
     //HOST
-    float *h_arr[ gpuCount ];
-    uint perDevN = 1E8 / gpuCount;
+    float *h_arr[ gpuCount ];           //     float **h_arr = ( float** )malloc( sizeof( float * ) * gpuCount ); //alternatively
+    uint perDevN = 1E3 / gpuCount;
     //DEVICE
     cudaStream_t stream[ gpuCount ];
-    float *d_arr[ gpuCount ];
-    //alocate H,D memories
+    float *d_arr[ gpuCount ];           //     float **d_arr = ( float** )malloc( sizeof( float * ) * gpuCount ); //alternatively
+    
+    //alocate & initialize H,D memories
     for ( i = 0; i < gpuCount; i++ )
     {
         //HOST 
         cudaMallocHost( ( void** ) &h_arr[ i ], perDevN );
+        initalizeHost( h_arr[ i ], perDevN );
         //DEVICE
         cudaSetDevice( i );
-        cudaGetDeviceProperties( &gpuProperties, i );
-        cout << gpuProperties.name << ": " << endl;
-        cudaMalloc( ( void** ) &d_arr, perDevN );
+        cudaMalloc( ( void** ) &d_arr[ i ], perDevN );
         cudaStreamCreate( &stream[ i ] );
     }
-    //initalize data
+    
+    //DEVICE computations
     for ( i = 0; i < gpuCount; i++ )
     {
-        initalizeHost( h_arr[ i ], perDevN );
         cudaSetDevice( i );
+        cudaGetDeviceProperties( &gpuProperties, i );
+        cout << endl << gpuProperties.name << ": " << endl;
+        auto t1 = chrono::high_resolution_clock::now();
+        trivialLoop<<< 1, 1 >>>();
+        nop<<< 1, 1 >>>();
+        auto t2 = chrono::high_resolution_clock::now();
+        uint elapsed = uint( chrono::duration_cast< chrono::nanoseconds >( t2 - t1 ).count() ); 
+        printf( "loop elapsed: %d \n", elapsed );
+        
+        t1 = chrono::high_resolution_clock::now();
+        unrollTrivialLoop<<< 1, 1 >>>();
+        nop<<< 1, 1 >>>();
+        t2 = chrono::high_resolution_clock::now();
+        elapsed = chrono::duration_cast< chrono::nanoseconds >( t2 - t1 ).count();  
+        printf( "unrolled loop elapsed: %d \n", elapsed );
+        
+        
+        
+        
+        
+        //cudaMemcpyAsync( d_arr[i], h_arr[i], H2D, stream[i] );
+        //kernel<<< nT, nB, stream[i] >>>( d_arr, perDevN );
+        /*    uint tid = threadIdx.x;
+              uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+              if( idx < perDevN ) :...
+        */
+        //cudaMemcpyAsync( gpuRef[i], d_arr, D2H stream[i] );
+        
+        
+        
+        
+        
         
     }
     
-    //free memory
+    //free memories
     for ( i = 0; i < gpuCount; i++ )
     {
         //HOST 
@@ -65,3 +108,11 @@ int main( void )
     cudaDeviceReset();
     return 0;
 }
+
+void initalizeHost( float *ip, uint size )
+{
+    for ( size_t i = 0; i < size; i++ )
+        ip[ i ] = 0.0f;
+};
+
+//Post Scriptum: In my professional opinion, coprocessors: GTX1080ti is brand-new and off-the-shell optimal; GTX770 is used optimal - I've heard about R9Nano and HD5770 ( GFLOPS/USD; GFLOPS/W; QualityWithBandwidthAndMemSize/Price; ); 
