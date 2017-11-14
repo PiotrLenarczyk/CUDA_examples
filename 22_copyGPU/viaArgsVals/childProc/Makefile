@@ -1,6 +1,6 @@
 # Build tools 
 FLAGS=-Wno-deprecated-gpu-targets -std=c++11
-DynParFLAGS = -arch=sm_35 -rdc=true 
+DynParFLAGS = -gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_61,code=sm_61 -rdc=true  
 NVLIBS = -lcudadevrt 
 NVINC = -I /usr/local/cuda-8.0/include/thrust -I /usr/local/cuda-8.0/targets/x86_64-linux/include/thrust
 NVCC = /usr/local/cuda-8.0/bin/nvcc $(FLAGS) $(DynParFLAGS) $(NVLIBS) $(NVINC)
