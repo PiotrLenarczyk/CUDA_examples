@@ -1,10 +1,10 @@
 #include <iostream>
-
-using namespace std;
-typedef uint32_t uint;
 #define H2D cudaMemcpyHostToDevice 
 #define D2H cudaMemcpyDeviceToHost
 #define OK CUDA_SUCCESS
+
+using namespace std;
+typedef uint32_t uint;
 
 //CPU
 uint i = 0;
@@ -19,7 +19,6 @@ __device__ float4 d_sArr[ 1 ];	//d_s[].x;.y;.z;.w; cudaMemcpyToSymbol(*dest,*src
 const uint nThreads = 512, nBlocks = ( N / nThreads ) + 1;
 inline void initGPUMem( void )
 {
-    if ( ( nThreads * nBlocks ) > 16777215 ) { printf( "FPR addressing error!\n" ); return; }; 
     for ( i= 0; i < nArrays; i++ )
     {
         if ( cudaMallocHost( ( void** ) &h_arr[ i ], NBytes_f32 ) != OK ) { printf( "cudaMallocHost err!\n" ); return; };
@@ -49,9 +48,8 @@ inline int freeGPUMem( void )
 
 __global__ void emptyKernel( float *d_in )
 {
-//   max FPR indexing: nThreads=512; nBlocks=32767; (floatIndex < 16777215 ~=64GB)
-	float tdx = threadIdx.x + blockIdx.x * blockDim.x; 
-        printf( "thread[%i].block[%i]\n", uint( tdx ), blockDim.x );
+	uint tdx = threadIdx.x + blockIdx.x * blockDim.x; 
+        printf( "thread[%i].block[%i]\n", tdx, blockDim.x );
 };
 
 
