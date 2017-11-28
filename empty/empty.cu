@@ -4,6 +4,7 @@ using namespace std;
 typedef uint32_t uint;
 #define H2D cudaMemcpyHostToDevice 
 #define D2H cudaMemcpyDeviceToHost
+#define OK CUDA_SUCCESS
 
 //CPU
 uint i = 0;
@@ -14,14 +15,16 @@ float *h_arr[ nArrays ], *h_result[ nArrays ];      //pinned H2D && D2H transfer
 
 //GPU
 float *d_arr[ nArrays ];
+__device__ float4 d_sArr[ 1 ];	//d_s[].x;.y;.z;.w; cudaMemcpyToSymbol(*dest,*src,byteSize);cudaMemcpyFromSymbol(*dest,*src,byteSize);
 const uint nThreads = 512, nBlocks = ( N / nThreads ) + 1;
-void initGPUMem( void )
+inline void initGPUMem( void )
 {
+	if ( ( nThreads * nBlocks ) > 16777215 ) { printf( "FPR addressing error!\n" ); return; }; 
     for ( i= 0; i < nArrays; i++ )
     {
-        cudaMallocHost( ( void** ) &h_arr[ i ], NBytes_f32 );
-        cudaMallocHost( ( void** ) &h_result[ i ], NBytes_f32 );
-        cudaMalloc( ( void** ) &d_arr[ i ], NBytes_f32 );
+        if ( cudaMallocHost( ( void** ) &h_arr[ i ], NBytes_f32 ) != OK ) { printf( "cudaMallocHost err!\n" ); return; };
+        if ( cudaMallocHost( ( void** ) &h_result[ i ], NBytes_f32 ) != OK ) { printf( "cudaMallocHost err!\n" ); return; };
+        if ( cudaMalloc( ( void** ) &d_arr[ i ], NBytes_f32 ) != OK ) { printf( "cudaMalloc err!\n" ); return; };
 //      ...
 //      h_arr[] data load
 //      ...        
@@ -30,7 +33,7 @@ void initGPUMem( void )
 };
 
 
-int freeGPUMem( void )
+inline int freeGPUMem( void )
 {
     for ( i= 0; i < nArrays; i++ )
     {
@@ -46,8 +49,9 @@ int freeGPUMem( void )
 
 __global__ void emptyKernel( float *d_in )
 {
-	uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
-        printf( "thread[%i].block[%i]\n", tdx, blockDim.x );
+//   max FPR indexing: nThreads=512; nBlocks=32767; (<16777215)
+	float tdx = threadIdx.x + blockIdx.x * blockDim.x; 
+        printf( "thread[%i].block[%i]\n", uint( tdx ), blockDim.x );
 };
 
 
@@ -57,7 +61,7 @@ int main( void )
     
     for( i = 0; i < nArrays; i++ )
     {
-        emptyKernel<<< 1, 1 >>>( d_arr[ i ] ); //first stream execution
+        emptyKernel<<< 1, 1 >>>( d_arr[ i ] );
         cudaMemcpyAsync( &h_result[ i ], &d_arr[ i ], NBytes_f32, D2H );
     };
     
