@@ -76,6 +76,6 @@ double doubleArrSum( vector< float > &arrIn )
     return sum;
 }
 
-//P.S. note gpu high - flexibility in providing code and high-throuhput architecture.
+//P.S. note gpu high - flexibility in providing code and high-throughput architecture.
 //P.P.S. note horribly gpu-code developing time efficiency for beginners ( during my small experience in gpu programming )
 //P.P.P.S. quite suprising results for ultra-sequential basic CPU operations as basic as vector sum. There are no GPU and CPU code optimalizations in this example.
