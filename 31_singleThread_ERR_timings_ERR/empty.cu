@@ -230,6 +230,28 @@ int main( void )
     
     for( i = 0; i < nArrays; i++ )
     {
+    
+    /*
+		http://roxlu.com/2013/011/basic-cuda-example
+	*/
+    	float4 *h_f4, *d_f4;
+    	*h_f4 = ( float4* )malloc( NBytes_f32 );
+    	for ( ind = 0; ind < N; ind++ )
+    	{
+    	if ( ( ind % 4 ) == 0 )
+            h_f4[ ind / 4 ].x = h_arr[ ind ];
+        else if ( ( ind % 4 ) == 1 )
+            h_f4[ ind / 4 ].y = h_arr[ ind ];
+        else if ( ( ind % 4 ) == 2 )
+            h_f4[ ind / 4 ].z = h_arr[ ind ];
+        else if ( ( ind % 4 ) == 3 )
+            h_f4[ ind / 4 ].w = h_arr[ ind ];
+    	};
+    	d_f4 = f_f4;
+		if ( cudaMalloc( d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
+    	if ( cudaMemcpy( d_f4, h_f4, NBytes_f32 ) != OK ) { printf( "cudaMemcpy err!" ); return; };
+    
+    
         auto f1 = chrono::high_resolution_clock::now();
             makeFloat2<<< nBlocks, nThreads >>>( d_arr[ i ] );
             float2_Access<<< nBlocks, nThreads >>>();
