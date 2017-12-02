@@ -224,6 +224,28 @@ __global__ void float4_Access( void )
     };
 };
 
+__global__ void printf4( float4 *d_inf4 )
+{
+ for ( uint i = 0; i < 2; i++ )
+    printf( "d_inf4[%i].x: %f\nd_inf4[%i].y: %f\nd_inf4[%i].z: %f\nd_inf4[%i].w: %f\n", i, d_inf4[ i ].x, i, d_inf4[ i ].y, i, d_inf4[ i ].z, i, d_inf4[ i ].w );
+};
+
+__global__ void arrFloat4_Access( void )
+{
+    uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
+    if ( tdx < N )
+    {
+        if ( ( tdx % 4 ) == 0 )
+            d_arr4[ tdx / 4 ].x += d_arr4[ tdx / 4 ].x;
+        else if ( ( tdx % 4 ) == 1 )
+            d_arr4[ tdx / 4 ].y += d_arr4[ tdx / 4 ].y;
+        else if ( ( tdx % 4 ) == 2 )
+            d_arr4[ tdx / 4 ].z += d_arr4[ tdx / 4 ].z;
+        else if ( ( tdx % 4 ) == 3 )
+            d_arr4[ tdx / 4 ].w += d_arr4[ tdx / 4 ].w;
+    };
+};
+
 int main( void )
 {
     initGPUMem();
@@ -235,22 +257,24 @@ int main( void )
 		http://roxlu.com/2013/011/basic-cuda-example
 	*/
     	float4 *h_f4, *d_f4;
-    	*h_f4 = ( float4* )malloc( NBytes_f32 );
+    	h_f4 = ( float4* )malloc( NBytes_f32 );
     	for ( ind = 0; ind < N; ind++ )
     	{
     	if ( ( ind % 4 ) == 0 )
-            h_f4[ ind / 4 ].x = h_arr[ ind ];
+            h_f4[ ind / 4 ].x = h_arr[ i ][ ind ];
         else if ( ( ind % 4 ) == 1 )
-            h_f4[ ind / 4 ].y = h_arr[ ind ];
+            h_f4[ ind / 4 ].y = h_arr[ i ][ ind ];
         else if ( ( ind % 4 ) == 2 )
-            h_f4[ ind / 4 ].z = h_arr[ ind ];
+            h_f4[ ind / 4 ].z = h_arr[ i ][ ind ];
         else if ( ( ind % 4 ) == 3 )
-            h_f4[ ind / 4 ].w = h_arr[ ind ];
+            h_f4[ ind / 4 ].w = h_arr[ i ][ ind ];
     	};
-    	d_f4 = f_f4;
-		if ( cudaMalloc( d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
-    	if ( cudaMemcpy( d_f4, h_f4, NBytes_f32 ) != OK ) { printf( "cudaMemcpy err!" ); return; };
-    
+    	d_f4 = h_f4;
+		if ( cudaMalloc( &d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
+    	if ( cudaMemcpy( d_f4, h_f4, NBytes_f32, H2D ) != OK ) { printf( "cudaMemcpy err!" ); return; };
+        printf4<<< 1, 1 >>> ( d_f4 );
+        cudaFree( h_f4 );
+        cudaFree( d_f4 );
     
         auto f1 = chrono::high_resolution_clock::now();
             makeFloat2<<< nBlocks, nThreads >>>( d_arr[ i ] );
