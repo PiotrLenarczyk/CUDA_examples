@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 #define H2D cudaMemcpyHostToDevice 
 #define D2H cudaMemcpyDeviceToHost
 #define OK cudaSuccess
@@ -58,14 +59,31 @@ __global__ void emptyKernel( float *d_in )
     };
 };
 
-
 int main( void )
 {
     initGPUMem();
     
     for( i = 0; i < nArrays; i++ )
     {
-        emptyKernel<<< 1, 1 >>>( d_arr[ i ] );
+		auto f1 = chrono::high_resolution_clock::now();
+        	emptyKernel<<< 1, 1 >>>( d_arr[ i ] );
+			cudaDeviceSynchronize();
+        auto f2 = chrono::high_resolution_clock::now();
+        cout << "GPU kernel took <chrono> : "
+            << chrono::duration_cast< chrono::nanoseconds >( f2 - f1 ).count()
+            << " [ns]\n"; 
+		cudaEvent_t start1, stop1;
+		cudaEventCreate( &start1 );
+		cudaEventCreate( &stop1 );                  
+        cudaEventRecord( start1 );
+            emptyKernel<<< 1, 1 >>>( d_arr[ i ] );  
+            cudaDeviceSynchronize();
+        cudaEventRecord( stop1 );
+        cudaEventSynchronize( stop1 );
+        float milliseconds = 0.0f;
+        cudaEventElapsedTime( &milliseconds, start1, stop1 );
+        cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU kernel took <cudaEvent> : " 
+        	 << milliseconds * 1000000.0f << "[ns]\n";
         cudaMemcpy( h_result[ i ], d_arr[ i ], NBytes_f32, D2H );
             for ( ind = 0; ind < 3; ind++ )
                 cout << "h_result[" << i << "][" << ind << "]: " << h_result[ i ][ ind ] << endl;
@@ -73,3 +91,4 @@ int main( void )
     
 	return freeGPUMem();
 }
+

@@ -14,12 +14,14 @@ const uint NBytes_f32 = sizeof( float ) * N;
 const uint nArrays = 1;                             //single default stream of 1D array
 float *h_arr[ nArrays ], *h_result[ nArrays ];      //pinned H2D && D2H transfers
 float nonPinnedArr[ N ];							//non-pinned H2D && D2H transfers are about 2-3times slower via PCIe
+float4 *h_f4;										//float4 host ptr ("http://roxlu.com/2013/011/basic-cuda-example")
 
 //GPU
 float *d_arr[ nArrays ];
 __device__ float2 d_arr2[ N / 2 ];
 __device__ float3 d_arr3[ N / 3 ];
 __device__ float4 d_arr4[ N / 4 ];
+float4 *d_f4;										//float4 device ptr
 const uint nThreads = 512, nBlocks = ( N / nThreads ) + 1;
 int freeGPUMem( void )
 {
@@ -29,11 +31,14 @@ int freeGPUMem( void )
         cudaFreeHost( h_arr[ i ] );
         cudaFreeHost( h_result[ i ] );
         cudaFreeHost( nonPinnedArr );
+        cudaFree( h_f4 );
         //DEVICE
         cudaFree( d_arr[ i ] );
         cudaFree( d_arr2 );
         cudaFree( d_arr3 );
         cudaFree( d_arr4 );
+        cudaFree( d_f4 );
+
     };
     cudaDeviceReset();
     return 0;
@@ -107,6 +112,21 @@ void initGPUMem( void )
 //	-both GPU's cudaSetDevice();
 //makeFloat2 vs float[ N/2 ][ 2 ]
 //      ...                  
+    	h_f4 = ( float4* )malloc( NBytes_f32 );
+    	for ( ind = 0; ind < N; ind++ )
+    	{
+    	if ( ( ind % 4 ) == 0 )
+            h_f4[ ind / 4 ].x = h_arr[ i ][ ind ];
+        else if ( ( ind % 4 ) == 1 )
+            h_f4[ ind / 4 ].y = h_arr[ i ][ ind ];
+        else if ( ( ind % 4 ) == 2 )
+            h_f4[ ind / 4 ].z = h_arr[ i ][ ind ];
+        else if ( ( ind % 4 ) == 3 )
+            h_f4[ ind / 4 ].w = h_arr[ i ][ ind ];
+    	};
+    	d_f4 = h_f4;
+		if ( cudaMalloc( &d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
+    	if ( cudaMemcpy( d_f4, h_f4, NBytes_f32, H2D ) != OK ) { printf( "cudaMemcpy err!" ); return; };
 		for ( ind = 0; ind < N; ind++ )
             h_arr[ i ][ ind ] = float( ind );
         for ( ind = 0; ind < 3; ind++ )
@@ -151,12 +171,10 @@ __global__ void float2_Access( void )
 //     for ( uint i = 0; i < 3; i++ )
 //         printf( "d_arr2[%i].x: %f\nd_arr2[%i].y: %f\n", i, d_arr2[ i ].x, i, d_arr2[ i ].y );
     uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
-    if ( tdx < N )
+    if ( tdx < ( N / 2 ) )
     {
-        if ( !( tdx % 2 ) )
-            d_arr2[ tdx / 2 ].x += d_arr2[ tdx / 2 ].x;
-        else
-            d_arr2[ tdx / 2 ].y = d_arr2[ tdx / 2 ].y;
+        d_arr2[ tdx ].x += d_arr2[ tdx ].x;
+        d_arr2[ tdx ].y += d_arr2[ tdx ].y;
     };
 };
 
@@ -179,14 +197,11 @@ __global__ void float3_Access( void )
 //     for ( uint i = 0; i < 2; i++ )
 //         printf( "d_arr3[%i].x: %f\nd_arr3[%i].y: %f\nd_arr3[%i].z: %f\n", i, d_arr3[ i ].x, i, d_arr3[ i ].y, i, d_arr3[ i ].z );
     uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
-    if ( tdx < N )
+    if ( tdx < ( N / 3 ) )
     {
-        if ( ( tdx % 3 ) == 0 )
-            d_arr3[ tdx / 3 ].x += d_arr3[ tdx / 3 ].x;
-        else if ( ( tdx % 3 ) == 1 )
-            d_arr3[ tdx / 3 ].y += d_arr3[ tdx / 3 ].y;
-        else if ( ( tdx % 3 ) == 2 )
-            d_arr3[ tdx / 3 ].z += d_arr3[ tdx / 3 ].z;
+        d_arr3[ tdx ].x += d_arr3[ tdx ].x;
+        d_arr3[ tdx ].y += d_arr3[ tdx ].y;
+        d_arr3[ tdx ].z += d_arr3[ tdx ].z;
     };
 };
 
@@ -208,41 +223,27 @@ __global__ void makeFloat4( float *d_in )
 
 __global__ void float4_Access( void )
 {
-//     for ( uint i = 0; i < 2; i++ )
-//         printf( "d_arr4[%i].x: %f\nd_arr4[%i].y: %f\nd_arr4[%i].z: %f\nd_arr4[%i].w: %f\n", i, d_arr4[ i ].x, i, d_arr4[ i ].y, i, d_arr4[ i ].z, i, d_arr4[ i ].w );
+// for ( uint i = 0; i < 2; i++ )
+//    printf( "d_inf4[%i].x: %f\nd_inf4[%i].y: %f\nd_inf4[%i].z: %f\nd_inf4[%i].w: %f\n", i, d_inf4[ i ].x, i, d_inf4[ i ].y, i, d_inf4[ i ].z, i, d_inf4[ i ].w );
     uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
-    if ( tdx < N )
+    if ( tdx < ( N / 4 ) )
     {
-        if ( ( tdx % 4 ) == 0 )
-            d_arr4[ tdx / 4 ].x += d_arr4[ tdx / 4 ].x;
-        else if ( ( tdx % 4 ) == 1 )
-            d_arr4[ tdx / 4 ].y += d_arr4[ tdx / 4 ].y;
-        else if ( ( tdx % 4 ) == 2 )
-            d_arr4[ tdx / 4 ].z += d_arr4[ tdx / 4 ].z;
-        else if ( ( tdx % 4 ) == 3 )
-            d_arr4[ tdx / 4 ].w += d_arr4[ tdx / 4 ].w;
+	    d_arr4[ tdx ].x += d_arr4[ tdx ].x;
+        d_arr4[ tdx ].y += d_arr4[ tdx ].y;
+        d_arr4[ tdx ].z += d_arr4[ tdx ].z;
+        d_arr4[ tdx ].w += d_arr4[ tdx ].w;
     };
 };
 
-__global__ void printf4( float4 *d_inf4 )
-{
- for ( uint i = 0; i < 2; i++ )
-    printf( "d_inf4[%i].x: %f\nd_inf4[%i].y: %f\nd_inf4[%i].z: %f\nd_inf4[%i].w: %f\n", i, d_inf4[ i ].x, i, d_inf4[ i ].y, i, d_inf4[ i ].z, i, d_inf4[ i ].w );
-};
-
-__global__ void arrFloat4_Access( void )
+__global__ void arrFloat4_Access( float4 *d_inf4 )
 {
     uint tdx = threadIdx.x + blockIdx.x * blockDim.x;
-    if ( tdx < N )
+    if ( tdx < ( N / 4 ) )
     {
-        if ( ( tdx % 4 ) == 0 )
-            d_arr4[ tdx / 4 ].x += d_arr4[ tdx / 4 ].x;
-        else if ( ( tdx % 4 ) == 1 )
-            d_arr4[ tdx / 4 ].y += d_arr4[ tdx / 4 ].y;
-        else if ( ( tdx % 4 ) == 2 )
-            d_arr4[ tdx / 4 ].z += d_arr4[ tdx / 4 ].z;
-        else if ( ( tdx % 4 ) == 3 )
-            d_arr4[ tdx / 4 ].w += d_arr4[ tdx / 4 ].w;
+	    d_inf4[ tdx ].x += d_inf4[ tdx ].x;
+        d_inf4[ tdx ].y += d_inf4[ tdx ].y;
+        d_inf4[ tdx ].z += d_inf4[ tdx ].z;
+        d_inf4[ tdx ].w += d_inf4[ tdx ].w;
     };
 };
 
@@ -251,31 +252,7 @@ int main( void )
     initGPUMem();
     
     for( i = 0; i < nArrays; i++ )
-    {
-    
-    /*
-		http://roxlu.com/2013/011/basic-cuda-example
-	*/
-    	float4 *h_f4, *d_f4;
-    	h_f4 = ( float4* )malloc( NBytes_f32 );
-    	for ( ind = 0; ind < N; ind++ )
-    	{
-    	if ( ( ind % 4 ) == 0 )
-            h_f4[ ind / 4 ].x = h_arr[ i ][ ind ];
-        else if ( ( ind % 4 ) == 1 )
-            h_f4[ ind / 4 ].y = h_arr[ i ][ ind ];
-        else if ( ( ind % 4 ) == 2 )
-            h_f4[ ind / 4 ].z = h_arr[ i ][ ind ];
-        else if ( ( ind % 4 ) == 3 )
-            h_f4[ ind / 4 ].w = h_arr[ i ][ ind ];
-    	};
-    	d_f4 = h_f4;
-		if ( cudaMalloc( &d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
-    	if ( cudaMemcpy( d_f4, h_f4, NBytes_f32, H2D ) != OK ) { printf( "cudaMemcpy err!" ); return; };
-        printf4<<< 1, 1 >>> ( d_f4 );
-        cudaFree( h_f4 );
-        cudaFree( d_f4 );
-    
+    {    
         auto f1 = chrono::high_resolution_clock::now();
             makeFloat2<<< nBlocks, nThreads >>>( d_arr[ i ] );
             float2_Access<<< nBlocks, nThreads >>>();
@@ -297,9 +274,16 @@ int main( void )
             float4_Access<<< nBlocks, nThreads >>>();         
             cudaDeviceSynchronize();
         auto f6 = chrono::high_resolution_clock::now();
-        cout << "GPU float4_Access took <chrono> : "
+        cout << "GPU split float4_Access took <chrono> : "
             << chrono::duration_cast< chrono::nanoseconds >( f6 - f5 ).count()
-            << " [ns]\n";    
+            << " [ns]\n";   
+        auto f7 = chrono::high_resolution_clock::now();
+            arrFloat4_Access<<< nBlocks, nThreads >>>( d_f4 );       
+            cudaDeviceSynchronize();
+        auto f8 = chrono::high_resolution_clock::now();
+        cout << "GPU pinned arrFloat4_Access took <chrono> : "
+            << chrono::duration_cast< chrono::nanoseconds >( f8 - f7 ).count()
+            << " [ns]\n";
         auto t1 = chrono::high_resolution_clock::now();
             singleThreadAccess<<< 1, 1 >>>( d_arr[ i ] );
             cudaDeviceSynchronize();
@@ -319,25 +303,50 @@ int main( void )
 		cudaEventCreate( &start1 );
 		cudaEventCreate( &stop1 );                  
         cudaEventRecord( start1 );
-        	singleThreadAccess<<< 1, 1 >>>( d_arr[ i ] );
+            arrFloat4_Access<<< nBlocks, nThreads >>>( d_f4 );   
             cudaDeviceSynchronize();
         cudaEventRecord( stop1 );
         cudaEventSynchronize( stop1 );
         float milliseconds = 0.0f;
         cudaEventElapsedTime( &milliseconds, start1, stop1 );
-        cout << "single thread GPU accesses took <cudaEvent> : " << milliseconds * 1000000.0f << "[ns]\n";
+        cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU pinned arrFloat4_Access took <cudaEvent> : " 
+        	 << milliseconds * 1000000.0f << "[ns]\n";
 		cudaEvent_t start2, stop2;
 		cudaEventCreate( &start2 );
 		cudaEventCreate( &stop2 );                  
         cudaEventRecord( start2 );
-        	medianThreadAccess<<< nBlocks, nThreads >>>( d_arr[ i ] );
+        	makeFloat4<<< nBlocks, nThreads >>>( d_arr[ i ] );
+	        float4_Access<<< nBlocks, nThreads >>>();
             cudaDeviceSynchronize();
         cudaEventRecord( stop2 );
         cudaEventSynchronize( stop2 );
         milliseconds = 0.0f;
         cudaEventElapsedTime( &milliseconds, start2, stop2 );
+        cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU split float4_Access took <cudaEvent> : " 
+        	 << milliseconds * 1000000.0f << "[ns]\n";
+		cudaEvent_t start3, stop3;
+		cudaEventCreate( &start3 );
+		cudaEventCreate( &stop3 );                  
+        cudaEventRecord( start3 );
+        	medianThreadAccess<<< nBlocks, nThreads >>>( d_arr[ i ] );
+            cudaDeviceSynchronize();
+        cudaEventRecord( stop3 );
+        cudaEventSynchronize( stop3 );
+        milliseconds = 0.0f;
+        cudaEventElapsedTime( &milliseconds, start3, stop3 );
         cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU accesses took <cudaEvent> : " 
         	 << milliseconds * 1000000.0f << "[ns]\n";
+		cudaEvent_t start4, stop4;
+		cudaEventCreate( &start4 );
+		cudaEventCreate( &stop4 );                  
+        cudaEventRecord( start4 );
+        	singleThreadAccess<<< 1, 1 >>>( d_arr[ i ] );
+            cudaDeviceSynchronize();
+        cudaEventRecord( stop4 );
+        cudaEventSynchronize( stop4 );
+        milliseconds = 0.0f;
+        cudaEventElapsedTime( &milliseconds, start4, stop4 );
+        cout << "single thread GPU accesses took <cudaEvent> : " << milliseconds * 1000000.0f << "[ns]\n";
              
 //============================================================================                
         cudaMemcpy( h_result[ i ], d_arr[ i ], NBytes_f32, D2H );
@@ -348,3 +357,4 @@ int main( void )
     
 	return freeGPUMem();
 }
+
