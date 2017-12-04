@@ -1,5 +1,5 @@
 # Build tools 						maximize calculations precision
-FLAGS=-Wno-deprecated-gpu-targets -std=c++11 -O3 --fmad=true
+FLAGS=-Wno-deprecated-gpu-targets -O3 -std=c++11 --fmad=true
 DynParFLAGS = -gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_61,code=sm_61 -rdc=true
 NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
 NVCC = `find /usr/local -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)

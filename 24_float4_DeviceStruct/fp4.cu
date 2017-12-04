@@ -55,6 +55,27 @@ int main( void )
     printStruct<<< 1, no >>>();
     
     freeGPU();
+//========= Device float4 transfer
+    float4 *h_f4, *d_f4;
+    h_f4 = ( float4* )malloc( NBytes_f32 );
+    for ( ind = 0; ind < N; ind++ )
+    {
+    if ( ( ind % 4 ) == 0 )
+        h_f4[ ind / 4 ].x = h_arr[ i ][ ind ];
+    else if ( ( ind % 4 ) == 1 )
+        h_f4[ ind / 4 ].y = h_arr[ i ][ ind ];
+    else if ( ( ind % 4 ) == 2 )
+        h_f4[ ind / 4 ].z = h_arr[ i ][ ind ];
+    else if ( ( ind % 4 ) == 3 )
+        h_f4[ ind / 4 ].w = h_arr[ i ][ ind ];
+    };
+    d_f4 = h_f4;
+    if ( cudaMalloc( &d_f4, NBytes_f32 ) != OK ) { printf( "cudaMalloc err!" ); return; };
+    if ( cudaMemcpy( d_f4, h_f4, NBytes_f32, H2D ) != OK ) { printf( "cudaMemcpy err!" ); return; };
+    if ( cudaMemcpy( h_f4, d_f4, NBytes_f32, D2H ) != OK ) { printf( "cudaMemcpy err!" ); return; };
+    cudaFree( h_f4 );
+    cudaFree( d_f4 );
+//==================================
     cudaDeviceSynchronize();
     cudaDeviceReset();
     return 0;
