@@ -1,3 +1,3 @@
-Feel free to use tutorials and provided repository programs “as is“ without copyrights ( author Piotr
-Lenarczyk ) and of course guarantee.
-File "book.h" was pernamently removed due to NVidia Corporation copyrights. It will not be further authorized by the repository author.
+Feel free to use tutorials and provided repository programs “as is“ without copyrights ( author Piotr Lenarczyk is not intended to take general programming language capabilites as his own invention ) and of course guarantee. 
+
+Post Scriptum: found propetriary source parts authors are encouraged for providing ask for example deletion.
