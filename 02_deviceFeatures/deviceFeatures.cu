@@ -35,6 +35,9 @@ int main ( void )
 		printf( "Max. No. of Thread Dimensions: [ %d, %d, %d ]\n", prop.maxThreadsDim[ 0 ], prop.maxThreadsDim[ 1 ], prop.maxThreadsDim[ 2 ] );
 		printf( "Max. No. of Grid Dimensions: [ %d, %d, %d ]; including max. [ %d ] 1D-3D threads per block \n", 
 				prop.maxGridSize[ 0 ], prop.maxGridSize[ 1 ], prop.maxGridSize[ 2 ], prop.maxThreadsPerBlock );
+		printf( "Global memory size: %.2f[GB]\n", ( float )prop.totalGlobalMem / ( 1024.0f * 1024.0f * 1024.0f ) );
+		printf( "Global memory bus width: %i\n", ( int )prop.memoryBusWidth );
+		printf( "Memory freq.: %.2f[MHz]\n", ( float )prop.memoryClockRate / ( 1000.0f ) );
 		printf( "CUDA ver.: %d.%d\n", prop.major, prop.minor );
         printf( "Integrated GPU.: %d\n", prop.integrated );             
         printf( "Concurrency: %d\n", prop.concurrentKernels );
