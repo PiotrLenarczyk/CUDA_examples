@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <iostream>
 #define H2D cudaMemcpyHostToDevice 
 #define D2H cudaMemcpyDeviceToHost
