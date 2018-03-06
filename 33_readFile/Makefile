@@ -5,17 +5,17 @@ NVLIBS = -L /usr/lib/x86_64-linux-gnu/ -lcudadevrt
 NVCC = `find /usr/local -name 'nvcc' -print -quit` $(FLAGS) $(DynParFLAGS) $(NVLIBS)
 
 # here are all the objects
-GPUOBJS = trivial.o 
+GPUOBJS = readFile.o 
 
 # make and compile
 a.out:  $(GPUOBJS)
 	$(NVCC) -o a.out $(GPUOBJS) 
 
-trivial.o: trivial.cu
-	$(NVCC) -c trivial.cu
+readFile.o: readFile.cu
+	$(NVCC) -c readFile.cu
 
 clean:
-	rm trivial.o
+	rm readFile.o
 
 delete:
 	touch a.out && rm a.out
