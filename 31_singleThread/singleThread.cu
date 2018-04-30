@@ -2,6 +2,7 @@
 #include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 typedef uint32_t uint;
 #define H2D cudaMemcpyHostToDevice 
 #define D2H cudaMemcpyDeviceToHost
@@ -9,8 +10,9 @@ typedef uint32_t uint;
 
 //CPU
 uint i = 0, ind = 0;
-//const uint N = 9 * 1024;
-const uint N = 9 * 1024 * 1024;
+float sec = 0.0f;
+#define N_MB 1
+#define N N_MB * 1024 * 1024
 const uint NBytes_f32 = sizeof( float ) * N;
 const uint nArrays = 1;                             //single default stream of 1D array
 float *h_arr[ nArrays ], *h_result[ nArrays ];      //pinned H2D && D2H transfers
@@ -18,6 +20,7 @@ float nonPinnedArr[ N ];							//non-pinned H2D && D2H transfers are about 2-3ti
 float2 *h_f2;
 float3 *h_f3;
 float4 *h_f4;	              						//float4 host ptr ("http://roxlu.com/2013/011/basic-cuda-example")
+high_resolution_clock::time_point t;
 
 //GPU
 float *d_arr[ nArrays ];
@@ -69,17 +72,18 @@ void initGPUMem( void )
         for ( ind = 0; ind < N; ind++ )
             h_arr[ i ][ ind ] += h_arr[ i ][ ind ];
         auto t2 = chrono::high_resolution_clock::now();
+        sec = duration_cast< duration< float > >( t2 - t1 ).count() ; //[ms]->[s]
         cout << "CPU pinned accesses took <chrono> : "
-            << chrono::duration_cast< chrono::nanoseconds >( t2 - t1 ).count()
-            << " [ns]\n";
-
+            << sec << " [s]; "
+            << float( N_MB ) / sec << "[MBps]\n";
         auto t3 = chrono::high_resolution_clock::now();
         for ( ind = 0; ind < N; ind++ )
             nonPinnedArr[ ind ] += nonPinnedArr[ ind ];
         auto t4 = chrono::high_resolution_clock::now();
+        sec = duration_cast< duration< float > >( t4 - t3 ).count() ;
         cout << "CPU non-pinned accesses took <chrono> : "
-            << chrono::duration_cast< chrono::nanoseconds >( t4 - t3 ).count()
-            << " [ns]\n";
+            << sec << " [s]; "
+            << float( N_MB ) / sec << "[MBps]\n";
 //============================================================================
 		for ( ind = 0; ind < N; ind++ )
 		{
@@ -96,9 +100,10 @@ void initGPUMem( void )
 		cudaEventSynchronize( stop1 );
 		float milliseconds = 0.0f;
 		cudaEventElapsedTime( &milliseconds, start1, stop1 );
+		sec = milliseconds / 1000.0f;
 		cout << "CPU pinned accesses took <cudaEvent> : "
-		     << milliseconds * 1000000.0f
-		     << " [ns]\n";
+            << sec << " [s]; "
+            << float( N_MB ) / sec << "[MBps]\n";
 		cudaEvent_t start2, stop2;
 		cudaEventCreate( &start2 );
 		cudaEventCreate( &stop2 );
@@ -109,9 +114,10 @@ void initGPUMem( void )
 		cudaEventSynchronize( stop2 );
 		milliseconds = 0.0f;
 		cudaEventElapsedTime( &milliseconds, start2, stop2 );
+		sec = milliseconds / 1000.0f;
 		cout << "CPU non-pinned accesses took <cudaEvent> : "
-		     << milliseconds * 1000000.0f
-		     << " [ns]\n";       
+		     << sec << " [s]; "
+            << float( N_MB ) / sec << "[MBps]\n";
 //============================================================================              
         h_f2 = ( float2* )malloc( NBytes_f32 );
     	for ( ind = 0; ind < N; ind++ )
@@ -160,7 +166,7 @@ void initGPUMem( void )
     };
 };
 
-__global__ void nop( const uint N )
+__global__ void nop( void )
 {
     uint a = 0;
     for ( size_t i = 0; i < N; i++ );
@@ -301,7 +307,8 @@ __global__ void arrFloat4_Access( float4 *d_inf4 )
 };
 
 int main( void )
-{
+{	t = chrono::high_resolution_clock::now();  i=0;while( i < ( 0x1u << 18 ) ) { h_arr[ 0 ] = h_arr[ 0 ]; i+=1; }; //CPU warm up
+
     int gpuCount = 0;
     cudaGetDeviceCount( &gpuCount );
 
@@ -318,60 +325,68 @@ int main( void )
                 float2_Access<<< ( N / 2 ) / nThreads, nThreads >>>();
                 cudaDeviceSynchronize();
             auto f2 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f2 - f1 ).count() ;
             cout << "GPU split float2_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f2 - f1 ).count()
-                << " [ns]\n";   
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto f3 = chrono::high_resolution_clock::now();
                 makeFloat3<<< nBlocks, nThreads >>>( d_arr[ i ] );
                 float3_Access<<< ( N / 3 ) / nThreads, nThreads >>>();        
                 cudaDeviceSynchronize();
             auto f4 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f4 - f3 ).count() ;
             cout << "GPU split float3_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f4 - f3 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto f5 = chrono::high_resolution_clock::now();
                 makeFloat4<<< nBlocks, nThreads >>>( d_arr[ i ] );     
                 float4_Access<<< ( N / 4 ) / nThreads, nThreads >>>();         
                 cudaDeviceSynchronize();
             auto f6 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f6 - f5 ).count() ;
             cout << "GPU split float4_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f6 - f5 ).count()
-                << " [ns]\n";   
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto f7 = chrono::high_resolution_clock::now();
                 arrFloat2_Access<<< ( N / 2 ) / nThreads, nThreads >>>( d_f2 );       
                 cudaDeviceSynchronize();
             auto f8 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f8 - f7 ).count() ;
             cout << "GPU pinned arrFloat2_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f8 - f7 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto f9 = chrono::high_resolution_clock::now();
                 arrFloat3_Access<<< ( N / 3 ) / nThreads, nThreads >>>( d_f3 );       
                 cudaDeviceSynchronize();
             auto f10 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f10 - f9 ).count() ;
             cout << "GPU pinned arrFloat3_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f10 - f9 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto f11 = chrono::high_resolution_clock::now();
                 arrFloat4_Access<<< ( N / 4 ) / nThreads, nThreads >>>( d_f4 );       
                 cudaDeviceSynchronize();
             auto f12 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( f12 - f11 ).count() ;
             cout << "GPU pinned arrFloat4_Access took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( f12 - f11 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto t1 = chrono::high_resolution_clock::now();
                 singleThreadAccess<<< 1, 1 >>>( d_arr[ i ] );
                 cudaDeviceSynchronize();
             auto t2 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( t2 - t1 ).count() ;
             cout << "single thread GPU accesses took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( t2 - t1 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             auto t3 = chrono::high_resolution_clock::now();
                 medianThreadAccess<<< nBlocks, nThreads >>>( d_arr[ i ] );
                 cudaDeviceSynchronize();
             auto t4 = chrono::high_resolution_clock::now();
+            sec = duration_cast< duration< float > >( t4 - t3 ).count() ;
             cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU accesses took <chrono> : "
-                << chrono::duration_cast< chrono::nanoseconds >( t4 - t3 ).count()
-                << " [ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
     //============================================================================  
             cudaEvent_t start1, stop1;
             cudaEventCreate( &start1 );
@@ -384,8 +399,10 @@ int main( void )
             cudaEventSynchronize( stop1 );
             float milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start1, stop1 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU split float2_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             cudaEvent_t start2, stop2;
             cudaEventCreate( &start2 );
             cudaEventCreate( &stop2 );                  
@@ -397,8 +414,10 @@ int main( void )
             cudaEventSynchronize( stop2 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start2, stop2 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU split float3_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             cudaEvent_t start3, stop3;
             cudaEventCreate( &start3 );
             cudaEventCreate( &stop3 );                  
@@ -410,8 +429,10 @@ int main( void )
             cudaEventSynchronize( stop3 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start3, stop3 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU split float4_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             cudaEvent_t start4, stop4;
             cudaEventCreate( &start4 );
             cudaEventCreate( &stop4 );                  
@@ -422,8 +443,10 @@ int main( void )
             cudaEventSynchronize( stop4 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start4, stop4 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << ( N / 2 ) / nThreads << "]; nThreads[" << nThreads << "]; GPU pinned arrFloat2_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             cudaEvent_t start5, stop5;
             cudaEventCreate( &start5 );
             cudaEventCreate( &stop5 );                  
@@ -434,8 +457,10 @@ int main( void )
             cudaEventSynchronize( stop5 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start5, stop5 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << ( N / 3 ) / nThreads << "]; nThreads[" << nThreads << "]; GPU pinned arrFloat3_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";
             cudaEvent_t start6, stop6;
             cudaEventCreate( &start6 );
             cudaEventCreate( &stop6 );                  
@@ -446,8 +471,10 @@ int main( void )
             cudaEventSynchronize( stop6 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start6, stop6 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << ( N / 4 ) / nThreads << "]; nThreads[" << nThreads << "]; GPU pinned arrFloat4_Access took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";                
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";               
             cudaEvent_t start7, stop7;
             cudaEventCreate( &start7 );
             cudaEventCreate( &stop7 );                  
@@ -458,7 +485,10 @@ int main( void )
             cudaEventSynchronize( stop7 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start7, stop7 );
-            cout << "single thread GPU accesses took <cudaEvent> : " << milliseconds * 1000000.0f << "[ns]\n";                
+            sec = milliseconds / 1000.0f;
+            cout << "single thread GPU accesses took <cudaEvent> : " 
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";                
             cudaEvent_t start8, stop8;
             cudaEventCreate( &start8 );
             cudaEventCreate( &stop8 );                  
@@ -469,9 +499,11 @@ int main( void )
             cudaEventSynchronize( stop8 );
             milliseconds = 0.0f;
             cudaEventElapsedTime( &milliseconds, start8, stop8 );
+            sec = milliseconds / 1000.0f;
             cout << "nBlocks[" << nBlocks << "]; nThreads[" << nThreads << "]; GPU accesses took <cudaEvent> : " 
-                << milliseconds * 1000000.0f << "[ns]\n";
-            nop<<< nBlocks, nThreads >>>( N );
+                 << sec << " [s]; "
+				 << float( N_MB ) / sec << "[MBps]\n";     
+            nop<<< nBlocks, nThreads >>>();
     //============================================================================                
             cudaMemcpy( h_result[ i ], d_arr[ i ], NBytes_f32, D2H );//cudaMemcpyFromSymbol( h_result[ i ], d_arr2, NBytes_f32, H2D );
         };
